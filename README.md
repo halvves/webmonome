@@ -66,11 +66,15 @@ monome.on('gridKeyDown', keydown);
 monome.on('gridKeyUp', keyup);
 ```
 
+## requirements
+
+`webmonome` relies on the `WebUSB` api. information on browser support for the `WebUSB` api can be found over at [caniuse](https://caniuse.com/#feat=webusb).
+
 ## api
 
-`webmonome` is currently very bare bones (as i'm still working out the kinks with WebUsb and the monome serial protocol), but there is enough there to capture grid presses and turn LEDs on and off.
+`webmonome` is currently very bare bones (as i'm still working out the kinks with WebUSB and the monome serial protocol), but there is enough there to capture grid presses and turn LEDs on and off.
 
-- initialize WebUsb and connect to device:
+- initialize WebUSB and connect to device:
 
   `monome.connect()`
 
