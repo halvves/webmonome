@@ -19,6 +19,13 @@
 ```js
 const monome = new WebMonome();
 
+const btn = document.createElement('button');
+btn.innerHTML = 'connect';
+btn.addEventListener('click', () => {
+  monome.connect();
+});
+document.body.appendChild(btn);
+
 const keydown = e => {
   monome.gridLed(e.x, e.y, true);
 };
@@ -40,6 +47,13 @@ import WebMonome from 'webmonome';
 
 const monome = new WebMonome();
 
+const btn = document.createElement('button');
+btn.innerHTML = 'connect';
+btn.addEventListener('click', () => {
+  monome.connect();
+});
+document.body.appendChild(btn);
+
 const keydown = e => {
   monome.gridLed(e.x, e.y, true);
 };
@@ -55,6 +69,10 @@ monome.on('gridKeyUp', keyup);
 ## api
 
 `webmonome` is currently very bare bones (as i'm still working out the kinks with WebUsb and the monome serial protocol), but there is enough there to capture grid presses and turn LEDs on and off.
+
+- initialize WebUsb and connect to device:
+
+  `monome.connect()`
 
 - set a single LED on or off:
 
