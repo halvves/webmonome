@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>WebMonome Demo</title>
+  </head>
+  <body>
+    <script type="module">
+      import WebMonome from '../src/webmonome.js';
+      const monome = new WebMonome();
+      window.monome = monome;
+
+      const btn = document.createElement('button');
+      btn.innerHTML = 'connect';
+      btn.addEventListener('click', () => {
+        monome.connect();
+      });
+      document.body.appendChild(btn);
+
+      const keydown = e => {
+        monome.gridLed(e.x, e.y, true);
+      };
+
+      const keyup = e => {
+        monome.gridLed(e.x, e.y);
+      };
+
+      const logEvent = e => {
+        console.log(e);
+      };
+
+      monome.on('gridKeyDown', keydown);
+      monome.on('gridKeyUp', keyup);
+      monome.on('query', logEvent);
+      monome.on('getId', logEvent);
+      monome.on('getGridOffsets', logEvent);
+      monome.on('getGridSize', logEvent);
+    </script>
+  </body>
+</html>
