@@ -72,43 +72,182 @@ monome.on('gridKeyUp', keyup);
 
 ## api
 
-`webmonome` is currently very bare bones (as i'm still working out the kinks with WebUSB and the monome serial protocol), but there is enough there to capture grid presses and turn LEDs on and off.
+`webmonome` is currently very bare bones (as i'm still working out the kinks with WebUSB and the monome serial protocol), but there is enough there to perform most grid operations.
+
+### connect
 
 - initialize WebUSB and connect to device:
 
-  `monome.connect()`
+  ```javascript
+  monome.connect()
+  ```
+
+### system
+
+system responses come in the form of events (see below), but this may be changed to include a callback or promise for ergonomics.
+
+- request device information:
+
+  ```javascript
+  monome.query()
+  ```
+
+- request device id:
+
+  ```javascript
+  monome.getId()
+  ```
+
+- request grid size:
+
+  ```javascript
+  monome.getGridSize()
+  ```
+
+### grid ops
 
 - set a single LED on or off:
 
-  `monome.gridLed(num: xCoord, Num: yCoord, boolean: on)`
+  ```javascript
+  monome.gridLed(xCoord, yCoord, on)
+  ```
+  - `xCoord`: integer
+  - `yCoord`: integer
+  - `on`: boolean
+
 
 - set all LEDs on or off:
 
-  `monome.gridLedAll(boolean: on)`
+  ```javascript
+  monome.gridLedAll(on)
+  ```
+  - `on`: boolean
 
-- subscribe to grid key events:
 
-  `monome.on(string: eventName, function: callback)`
+- set on/off state for column of LEDs:
 
-- unsubscribe from grid key events:
+  ```javascript
+  monome.gridLedCol(xOffset, yOffset, state)
+  ```
+  - `xOffset`: integer
+  - `yOffset`: integer (floored to multiples of 8 by the device firmware)
+  - `state`: array of up to 8 0/1 bits
 
-  `monome.off(string: eventName, function: callback)`
+
+- set on/off state for row of LEDs:
+
+  ```javascript
+  monome.gridLedRow(xOffset, yOffset, state)
+  ```
+  - `xOffset`: integer (floored to multiples of 8 by the device firmware)
+  - `yOffset`: integer
+  - `state`: array of up to 8 0/1 bits
+
+
+- set on/off state for an 8x8 quad of LEDs:
+
+  ```javascript
+  monome.gridLedMap(xOffset, yOffset, state)
+  ```
+  `xOffset`: integer
+  `yOffset`: integer
+  `state`: array of up to 64 0/1 bits
+
+- set system wide grid intensity:
+
+  ```javascript
+  monome.gridLedIntensity(intensity)
+  ```
+  - `intensity`: integer (0-15)
+
+
+- set single LED to specific level:
+
+  ```javascript
+  monome.gridLedLevel(xCoord, yCoord, level)
+  ```
+  - `xCoord`: integer
+  - `yCoord`: integer
+  - `level`: integer (0-15)
+
+
+- set all LEDs to specific level:
+
+  ```javascript
+  monome.gridLedLevelAll(level)
+  ```
+  - `level`: integer (0-15)
+
+
+- set level state for column of LEDs:
+
+  ```javascript
+  monome.gridLedLevelCol(num: xOffset, num: yOffset, []num: state)
+  ```
+  - `xOffset`: integer
+  - `yOffset`: integer (floored to multiples of 8 by the device firmware)
+  - `state`: array of up to 8 integers (0-15)
+
+
+- set level state for row of LEDs:
+
+  ```javascript
+  monome.gridLedLevelRow(num: xOffset, num: yOffset, []num: state)
+  ```
+  - `xOffset`: integer (floored to multiples of 8 by the device firmware)
+  - `yOffset`: integer
+  - `state`: array of up to 8 integers (0-15)
+
+
+- set level state for an 8x8 quad of LEDs:
+
+  ```javascript
+  monome.gridLedLevelMap(num: xOffset, num: yOffset, []num: state)
+  ```
+  - `xOffset`: integer
+  - `yOffset`: integer
+  - `state`: array of up to 64 integers (0-15)
+
+
+### event system
+
+- subscribe to events:
+
+  ```javascript
+  monome.on(eventName, callback)
+  ```
+  - `eventName`: string
+  - `callback`: function
+
+
+- unsubscribe from events:
+
+  ```javascript
+  monome.off(eventName, callback)
+  ```
+  - `eventName`: string
+  - `callback`: function
 
 ### events
 
+  - `query` `{type: num, count: num}`
+  - `getId` `str`
+  - `getGridSize` `{x: num, y: num}`
   - `gridKeyDown` `{x: num, y: num}`
   - `gridKeyUp` `{x: num, y: num}`
 
 
 ## next steps
 
-* figure out the /sys/ commands
-* add remaining grid ops
-* add arc ops
-* add any additional ops in the monome serial protocol (reaching something similar functionality to libmonome)
+* remaining /sys/ commands
+  - grid offsets
+  - addr scan
+  - firmware version
+* arc ops
+* add any additional ops in the monome serial protocol (reaching something similar to libmonome)
 
 ## see also
-
+* [monome protocol](https://monome.org/docs/serialosc/serial.txt)
 * [libmonome](https://github.com/monome/libmonome)
 * [serialosc](https://github.com/monome/serialosc)
 

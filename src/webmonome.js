@@ -68,6 +68,8 @@ const WebMonome = (function() {
   const hasUsb = 'navigator' in window && 'usb' in navigator;
 
   /* utils */
+  const clamp = (val, min, max) => Math.max(Math.min(val, max), min);
+
   const packHeader = (addr, cmd) => ((addr & 0xf) << 4) | (cmd & 0xf);
   const unpackHeader = header => [header >> 4, header & 0xf];
 
@@ -77,7 +79,7 @@ const WebMonome = (function() {
       ...(Array.isArray(data) ? data : []),
     ]);
 
-  const isConnected = device => device && device.opened;
+  const isConnected = device => Boolean(device && device.opened);
 
   const write = async (device, addr, cmd, ...data) => {
     if (!isConnected(device)) {
@@ -99,6 +101,32 @@ const WebMonome = (function() {
     return device.transferIn(1, byteLength);
   };
 
+  const packLineData = state => {
+    let data = 0;
+    for (let i = 0; i < Math.min(8, state.length); i++) {
+      data = data | (clamp(state[i], 0, 1) << i);
+    }
+    return data;
+  };
+
+  const packIntensityData = (state, length) => {
+    const data = [];
+    for (let i = 0; i < Math.ceil(length / 2); i++) {
+      data[i] = 0;
+    }
+    for (let i = 0; i < Math.min(length, state.length); i++) {
+      const byteIndex = Math.floor(i / 2);
+      const nybbleIndex = i % 2;
+      const nybbleOffset = nybbleIndex === 0 ? 4 : 0;
+      if (typeof data[byteIndex] !== 'number') {
+        data[byteIndex] = 0;
+      }
+      data[byteIndex] =
+        data[byteIndex] | (clamp(state[i], 0, 15) << nybbleOffset);
+    }
+    return data;
+  };
+
   return function() {
     if (!hasUsb) {
       log(WARN_NO_USB, 1);
@@ -108,20 +136,20 @@ const WebMonome = (function() {
     let device = null;
     let callbacks = {};
 
-    const handleGridKey = (name, e) => {
+    const emit = (name, payload) => {
       const cbs = callbacks[name];
       if (!Array.isArray(cbs)) return;
       for (let i = 0; i < cbs.length; i++) {
-        fn = cbs[i];
+        const fn = cbs[i];
         if (typeof fn !== 'function') skip;
-        fn(e);
+        fn(payload);
       }
     };
 
     // is this the best way to constanly listen to a usb device?
     const deviceLoop = async () => {
       // TODO: handle other loop breaks
-      if (!device || !device.opened) return;
+      if (!isConnected(device)) return;
 
       const result = await read(device, 64);
 
@@ -130,26 +158,32 @@ const WebMonome = (function() {
           const header = result.data.getUint8(start++);
           switch (header) {
             case packHeader(ADDR_SYSTEM, SYS_QUERY_RESPONSE):
-              // TODO: how do we read /sys/query ?
-              start = start + 5;
+              emit('query', {
+                type: result.data.getUint8(start++),
+                count: result.data.getUint8(start++),
+              });
               break;
             case packHeader(ADDR_SYSTEM, SYS_ID):
-              // TODO: how do we read /sys/id ?
-              start = start + 32;
+              let str = '';
+              for (let i = 0; i < 32; i++) {
+                str += String.fromCharCode(result.data.getUint8(start++));
+              }
+              emit('getId', str);
               break;
             case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
-              // TODO: how do we read /sys/id ?
-              console.log(header);
-              start = start + 2;
+              emit('getGridSize', {
+                x: result.data.getUint8(start++),
+                y: result.data.getUint8(start++),
+              });
               break;
             case packHeader(ADDR_KEY_GRID, CMD_KEY_DOWN):
-              handleGridKey('gridKeyDown', {
+              emit('gridKeyDown', {
                 x: result.data.getUint8(start++),
                 y: result.data.getUint8(start++),
               });
               break;
             case packHeader(ADDR_KEY_GRID, CMD_KEY_UP):
-              handleGridKey('gridKeyUp', {
+              emit('gridKeyUp', {
                 x: result.data.getUint8(start++),
                 y: result.data.getUint8(start++),
               });
@@ -169,7 +203,7 @@ const WebMonome = (function() {
 
     const monome = {
       get connected() {
-        return Boolean(device && device.opened);
+        return isConnected(device);
       },
       connect: async function() {
         try {
@@ -211,36 +245,98 @@ const WebMonome = (function() {
           on ? CMD_LED_ALL_ON : CMD_LED_ALL_OFF
         );
       },
-      /*
-      TODO: implement remaining LED commands
-      gridLedCol: async function(on) {
-
+      gridLedCol: async function(x, y, state) {
+        if (!Array.isArray(state)) return;
+        return write(
+          device,
+          ADDR_LED_GRID,
+          CMD_LED_COLUMN,
+          x,
+          y,
+          packLineData(state)
+        );
       },
-      gridLedRow: async function(on) {
-
+      gridLedRow: async function(x, y, state) {
+        if (!Array.isArray(state)) return;
+        return write(
+          device,
+          ADDR_LED_GRID,
+          CMD_LED_ROW,
+          x,
+          y,
+          packLineData(state)
+        );
       },
-      gridLedFrame: async function() {
-
+      gridLedMap: async function(x, y, state) {
+        if (!Array.isArray(state)) return;
+        const data = [0, 0, 0, 0, 0, 0, 0, 0];
+        for (let i = 0; i < Math.min(64, state.length); i++) {
+          const byteIndex = Math.floor(i / 8);
+          const bitIndex = i % 8;
+          data[byteIndex] =
+            data[byteIndex] | (clamp(state[i], 0, 1) << bitIndex);
+        }
+        return write(device, ADDR_LED_GRID, CMD_LED_MAP, x, y, ...data);
       },
-      gridLedIntensity: async function() {
-
+      gridLedIntensity: async function(intensity) {
+        return write(
+          device,
+          ADDR_LED_GRID,
+          CMD_LED_INTENSITY,
+          clamp(intensity, 0, 15)
+        );
       },
-      gridLedLevel: async function() {
-
+      gridLedLevel: async function(x, y, level) {
+        return write(
+          device,
+          ADDR_LED_GRID,
+          CMD_LED_LEVEL_SET,
+          x,
+          y,
+          clamp(level, 0, 15)
+        );
       },
-      gridLedLevelAll: async function() {
-
+      gridLedLevelAll: async function(level) {
+        return write(
+          device,
+          ADDR_LED_GRID,
+          CMD_LED_LEVEL_ALL,
+          clamp(level, 0, 15)
+        );
       },
-      gridLedLevelCol: async function() {
-
+      gridLedLevelCol: async function(x, y, state) {
+        if (!Array.isArray(state)) return;
+        return write(
+          device,
+          ADDR_LED_GRID,
+          CMD_LED_LEVEL_COLUMN,
+          x,
+          y,
+          ...packIntensityData(state, 8)
+        );
       },
-      gridLedLevelRow: async function() {
-
+      gridLedLevelRow: async function(x, y, state) {
+        if (!Array.isArray(state)) return;
+        return write(
+          device,
+          ADDR_LED_GRID,
+          CMD_LED_LEVEL_ROW,
+          x,
+          y,
+          ...packIntensityData(state, 8)
+        );
       },
-      gridLedLevelFrame: async function() {
-
+      gridLedLevelMap: async function(x, y, state) {
+        if (!Array.isArray(state)) return;
+        return write(
+          device,
+          ADDR_LED_GRID,
+          CMD_LED_LEVEL_MAP,
+          x,
+          y,
+          ...packIntensityData(state, 64)
+        );
       },
-      */
       on: function(eventName, fn) {
         if (typeof fn !== 'function') return;
         (callbacks[eventName] = callbacks[eventName] || []).push(fn);
