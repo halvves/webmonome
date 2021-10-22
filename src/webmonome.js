@@ -4,6 +4,7 @@ const WebMonome = (function() {
 
   /* errors */
   const MSG_PREFIX = 'WebMonome: ';
+  const ERR_NOT_SUPPORTED = 'device type not yet supported';
   const ERR_WRITE = 'write error';
   const ERR_WRITE_MISSING_BYTES = 'write is missing bytes';
   const WARN_NO_USB = 'this browser does not support WebUsb.';
@@ -64,6 +65,26 @@ const WebMonome = (function() {
   const CMD_KEY_UP = 0x0;
   const CMD_KEY_DOWN = 0x1;
 
+  /* input from series device (legacy protocol) */
+  const PROTO_SERIES_BUTTON_DOWN = 0x00;
+  const PROTO_SERIES_BUTTON_UP = 0x10;
+  const PROTO_SERIES_TILT = 0xD0;
+  const PROTO_SERIES_AUX_INPUT = 0xE0;
+
+  /* output from series device (legacy protocol) */
+  const PROTO_SERIES_LED_ON = 0x20;
+  const PROTO_SERIES_LED_OFF = 0x30;
+  const PROTO_SERIES_LED_ROW_8 = 0x40;
+  const PROTO_SERIES_LED_COL_8 = 0x50;
+  const PROTO_SERIES_LED_ROW_16 = 0x60;
+  const PROTO_SERIES_LED_COL_16 = 0x70;
+  const PROTO_SERIES_LED_FRAME = 0x80;
+  const PROTO_SERIES_CLEAR = 0x90;
+  const PROTO_SERIES_INTENSITY = 0xA0;
+  const PROTO_SERIES_MODE = 0xB0;
+  const PROTO_SERIES_AUX_PORT_ACTIVATE = 0xC0;
+  const PROTO_SERIES_AUX_PORT_DEACTIVATE = 0xD0;
+
   /* check for support */
   const hasUsb = 'navigator' in window && 'usb' in navigator;
 
@@ -80,6 +101,18 @@ const WebMonome = (function() {
     ]);
 
   const isConnected = device => Boolean(device && device.opened);
+  const deviceType = (device) => {
+    if (
+      /^m(64|128|256)/.test(device.serialNumber) ||
+      /^mk/.test(device.serialNumber)
+    ) {
+      return 'series'
+    } else if (/^[Mm]\d+/.test(device.serialNumber)) {
+      return 'mext'
+    } else {
+      err(ERR_NOT_SUPPORTED)
+    }
+  }
 
   const write = async (device, addr, cmd, ...data) => {
     if (!isConnected(device)) {
@@ -127,6 +160,53 @@ const WebMonome = (function() {
     return data;
   };
 
+  const unpackCoords = (device, data) => {
+    return {
+      mext: function () {
+        return {
+          x: data.getUint8(3),
+          y: data.getUint8(4)
+        };
+      },
+      series: function () {
+        const [x, y] = unpackHeader(data.getUint8(3));
+        return {x, y};
+      }
+    }[deviceType(device)]();
+  };
+
+  const queryAddress = device => {
+    return {
+      mext: packHeader(ADDR_SYSTEM, SYS_QUERY_RESPONSE)
+    }[deviceType(device)];
+  };
+
+  const idAddress = device => {
+    return {
+      mext: packHeader(ADDR_SYSTEM, SYS_ID)
+    }[deviceType(device)];
+  };
+
+  const gridSizeAddress = device => {
+    return {
+      mext: packHeader(ADDR_SYSTEM, SYS_GRID_SIZE)
+    }[deviceType(device)];
+  };
+
+  const keyDownAddress = device => {
+    return {
+      mext: packHeader(ADDR_SYSTEM, SYS_GRID_SIZE),
+      series: PROTO_SERIES_BUTTON_DOWN
+    }[deviceType(device)];
+  };
+
+  const keyUpAddress = device => {
+    return {
+      mext: packHeader(ADDR_KEY_GRID, CMD_KEY_UP),
+      series: PROTO_SERIES_BUTTON_UP
+    }[deviceType(device)];
+  };
+
   return function() {
     if (!hasUsb) {
       log(WARN_NO_USB, 1);
@@ -157,36 +237,30 @@ const WebMonome = (function() {
         const processData = start => {
           const header = result.data.getUint8(start++);
           switch (header) {
-            case packHeader(ADDR_SYSTEM, SYS_QUERY_RESPONSE):
+            case queryAddress(device):
               emit('query', {
                 type: result.data.getUint8(start++),
                 count: result.data.getUint8(start++),
               });
               break;
-            case packHeader(ADDR_SYSTEM, SYS_ID):
+            case idAddress(device):
               let str = '';
               for (let i = 0; i < 32; i++) {
                 str += String.fromCharCode(result.data.getUint8(start++));
               }
               emit('getId', str);
               break;
-            case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
+            case gridSizeAddress(device):
               emit('getGridSize', {
                 x: result.data.getUint8(start++),
                 y: result.data.getUint8(start++),
               });
               break;
-            case packHeader(ADDR_KEY_GRID, CMD_KEY_DOWN):
-              emit('gridKeyDown', {
-                x: result.data.getUint8(start++),
-                y: result.data.getUint8(start++),
-              });
+            case keyDownAddress(device):
+              emit('gridKeyDown', unpackCoords(device, result.data));
               break;
-            case packHeader(ADDR_KEY_GRID, CMD_KEY_UP):
-              emit('gridKeyUp', {
-                x: result.data.getUint8(start++),
-                y: result.data.getUint8(start++),
-              });
+            case keyUpAddress(device):
+              emit('gridKeyUp', unpackCoords(device, result.data));
               break;
             default:
               break;
