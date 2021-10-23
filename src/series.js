@@ -1,4 +1,4 @@
-import { clamp } from './utils.js';
+import { clamp, packLineData } from './utils.js';
 import Monome from './monome.js';
 
 /* input from series device */
@@ -57,6 +57,36 @@ export default class Series extends Monome {
 
   async gridLedAll (on) {
     return this.write([PROTO_SERIES_CLEAR | ((on ? 1 : 0) & 0x01)]);
+  }
+
+  async gridLedCol (x, y, state) {
+    if (!Array.isArray(state)) return;
+    /*
+      y offset is seemingly ignored in the serial protocol?
+      see: https://github.com/monome/libmonome/blob/cd11b2fde61b7ecd1c171cf9f8568918b0199df9/src/proto/series.c#L184
+    */
+    const mode = state.length === 8 ? PROTO_SERIES_LED_COL_8 :
+      PROTO_SERIES_LED_COL_16;
+
+    return this.write([
+      mode | (x & 0x0F),
+      packLineData(state)
+    ]);
+  }
+
+  async gridLedRow (x, y, state) {
+    if (!Array.isArray(state)) return;
+    /*
+      x offset is seemingly ignored in the serial protocol?
+      see: https://github.com/monome/libmonome/blob/cd11b2fde61b7ecd1c171cf9f8568918b0199df9/src/proto/series.c#L209
+    */
+    const mode = state.length === 8 ? PROTO_SERIES_LED_ROW_8 :
+      PROTO_SERIES_LED_ROW_16;
+
+    return this.write([
+      mode | (y & 0x0F),
+      packLineData(state)
+    ]);
   }
 
   async gridLedIntensity (intensity) {
