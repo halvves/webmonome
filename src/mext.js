@@ -1,3 +1,4 @@
+import { clamp } from './utils.js';
 import Monome from './monome.js';
 
 /* sections */
@@ -88,7 +89,7 @@ export default class Mext extends Monome {
     const header = data.getUint8(start++);
     switch (header) {
     case packHeader(ADDR_SYSTEM, SYS_QUERY_RESPONSE):
-      emit('query', {
+      this.emit('query', {
         type: data.getUint8(start++),
         count: data.getUint8(start++)
       });
@@ -98,22 +99,22 @@ export default class Mext extends Monome {
       for (let i = 0; i < 32; i++) {
         str += String.fromCharCode(data.getUint8(start++));
       }
-      emit('getId', str);
+      this.emit('getId', str);
       break;
     case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
-      emit('getGridSize', {
+      this.emit('getGridSize', {
         x: data.getUint8(start++),
         y: data.getUint8(start++)
       });
       break;
     case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
-      emit('gridKeyDown', {
+      this.emit('gridKeyDown', {
         x: data.getUint8(start++),
         y: data.getUint8(start++)
       });
       break;
     case packHeader(ADDR_KEY_GRID, CMD_KEY_UP):
-      emit('gridKeyUp', {
+      this.emit('gridKeyUp', {
         x: data.getUint8(start++),
         y: data.getUint8(start++)
       });
