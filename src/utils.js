@@ -14,6 +14,14 @@ export function clamp (val, min, max) {
   return Math.max(Math.min(val, max), min);
 }
 
+export function packLineData (state) {
+  let data = 0;
+  for (let i = 0; i < Math.min(8, state.length); i++) {
+    data = data | (clamp(state[i], 0, 1) << i);
+  }
+  return data;
+}
+
 export function err (msg) {
   throw new Error(MSG_PREFIX + msg);
 }
