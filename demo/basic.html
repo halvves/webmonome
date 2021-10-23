@@ -6,14 +6,14 @@
   </head>
   <body>
     <script type="module">
-      import WebMonome from '../src/webmonome.js';
-      const monome = new WebMonome();
-      window.monome = monome;
+      import connect from '../src/webmonome.js';
+      let monome;
 
       const btn = document.createElement('button');
       btn.innerHTML = 'connect';
-      btn.addEventListener('click', () => {
-        monome.connect();
+      btn.addEventListener('click', async () => {
+        monome = await connect();
+        setup()
       });
       document.body.appendChild(btn);
 
@@ -79,12 +79,14 @@
         console.log(e);
       };
 
-      monome.on('gridKeyDown', keydown);
-      monome.on('gridKeyUp', keyup);
-      monome.on('query', logEvent);
-      monome.on('getId', logEvent);
-      monome.on('getGridOffsets', logEvent);
-      monome.on('getGridSize', logEvent);
+      function setup () {
+        monome.on('gridKeyDown', keydown);
+        monome.on('gridKeyUp', keyup);
+        monome.on('query', logEvent);
+        monome.on('getId', logEvent);
+        monome.on('getGridOffsets', logEvent);
+        monome.on('getGridSize', logEvent);
+      }
     </script>
   </body>
 </html>
