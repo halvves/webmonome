@@ -1,4 +1,4 @@
-import { clamp } from './utils.js';
+import { clamp, packLineData } from './utils.js';
 import Monome from './monome.js';
 
 /* sections */
@@ -53,14 +53,6 @@ const packBuffer = (addr, cmd, data) =>
     packHeader(addr, cmd),
     ...(Array.isArray(data) ? data : []),
   ]);
-
-const packLineData = state => {
-  let data = 0;
-  for (let i = 0; i < Math.min(8, state.length); i++) {
-    data = data | (clamp(state[i], 0, 1) << i);
-  }
-  return data;
-};
 
 const packIntensityData = (state, length) => {
   const data = [];
