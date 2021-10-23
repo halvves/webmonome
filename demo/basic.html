@@ -17,12 +17,62 @@
       });
       document.body.appendChild(btn);
 
+      const all = document.createElement('button');
+      all.innerHTML = 'all';
+      all.addEventListener('click', () => {
+        monome.gridLedAll(true);
+        document.querySelectorAll(`[type=checkbox]`).forEach(
+          i => i.checked = true
+        );
+      });
+      document.body.appendChild(all);
+
+      const clear = document.createElement('button');
+      clear.innerHTML = 'clear';
+      clear.addEventListener('click', () => {
+        monome.gridLedAll();
+        document.querySelectorAll(`[type=checkbox]`).forEach(
+          i => i.checked = false
+        );
+      });
+      document.body.appendChild(clear);
+
+      const intensity = document.createElement('input');
+      intensity.type = 'range';
+      intensity.min = 0;
+      intensity.max = 15;
+      intensity.value = 15;
+      intensity.addEventListener('input', () => {
+        monome.gridLedIntensity(intensity.value);
+      });
+      document.body.appendChild(intensity);
+
+      for (let y = 0; y < 16; y++) {
+        const row = document.createElement('div');
+        for (let x = 0; x < 16; x++) {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox'
+          checkbox.value = `x${x}y${y}`;
+          checkbox.addEventListener('change', () => {
+            monome.gridLed(x, y, checkbox.checked);
+          });
+          row.appendChild(checkbox);
+        }
+        document.body.appendChild(row);
+      }
+
+      const check = (x, y, checked) => {
+        document.querySelector(`[value=x${x}y${y}]`).checked = checked
+      }
+
       const keydown = e => {
         monome.gridLed(e.x, e.y, true);
+        check(e.x, e.y, true);
       };
 
       const keyup = e => {
         monome.gridLed(e.x, e.y);
+        check(e.x, e.y);
       };
 
       const logEvent = e => {
