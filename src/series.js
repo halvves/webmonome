@@ -30,13 +30,16 @@ export default class Series extends Monome {
     const header = data.getUint8(start++);
     let x;
     let y;
+    let datum;
     switch (header) {
     case PROTO_SERIES_BUTTON_DOWN:
-      [x, y] = [data.getUint8(3) >> 4, data.getUint8(3) & 0xf];
+      datum = data.getUint8(start++);
+      [x, y] = [datum >> 4, datum & 0xf];
       this.emit('gridKeyDown', { x, y });
       break;
     case PROTO_SERIES_BUTTON_UP:
-      [x, y] = [data.getUint8(3) >> 4, data.getUint8(3) & 0xf];
+      datum = data.getUint8(start++);
+      [x, y] = [datum >> 4, datum & 0xf];
       this.emit('gridKeyUp', { x, y });
       break;
     default:
