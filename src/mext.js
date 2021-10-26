@@ -49,10 +49,10 @@ const packHeader = (addr, cmd) => ((addr & 0xf) << 4) | (cmd & 0xf);
 const unpackHeader = header => [header >> 4, header & 0xf];
 
 const packBuffer = (addr, cmd, data) =>
-  new Uint8Array([
+  [
     packHeader(addr, cmd),
     ...(Array.isArray(data) ? data : []),
-  ]);
+  ];
 
 const packIntensityData = (state, length) => {
   const data = [];
@@ -242,6 +242,6 @@ export default class Mext extends Monome {
   }
 
   writeBuffer () {
-    return this.writeBuffer(Array.from(arguments));
+    return this.write(packBuffer(Array.from(arguments)));
   }
 }
