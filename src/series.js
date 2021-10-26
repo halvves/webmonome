@@ -53,13 +53,13 @@ export default class Series extends Monome {
 
   async gridLed (x, y, on) {
     return this.write([
-      PROTO_SERIES_LED_ON + ((on ? 0 : 1) << 4),
+      on ? PROTO_SERIES_LED_ON : PROTO_SERIES_LED_OFF,
       (x << 4) | y
     ]);
   }
 
   async gridLedAll (on) {
-    return this.write([PROTO_SERIES_CLEAR | ((on ? 1 : 0) & 0x01)]);
+    return this.write([PROTO_SERIES_CLEAR | (on & 0x01)]);
   }
 
   async gridLedCol (x, y, state) {
