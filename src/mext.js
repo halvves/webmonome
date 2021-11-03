@@ -119,30 +119,30 @@ export default class Mext extends Monome {
     }
   }
 
-  async query() {
+  query() {
     return this.writeBuffer(ADDR_SYSTEM, SYS_QUERY);
   }
 
-  async getId() {
+  getId() {
     return this.writeBuffer(ADDR_SYSTEM, SYS_GET_ID);
   }
 
-  async getGridSize() {
+  getGridSize() {
     return this.writeBuffer(ADDR_SYSTEM, SYS_GET_GRID_SIZES);
   }
 
-  async gridLed(x, y, on) {
+  gridLed(x, y, on) {
     return this.writeBuffer(ADDR_LED_GRID, on ? CMD_LED_ON : CMD_LED_OFF, x, y);
   }
 
-  async gridLedAll(on) {
+  gridLedAll(on) {
     return this.writeBuffer(
       ADDR_LED_GRID,
       on ? CMD_LED_ALL_ON : CMD_LED_ALL_OFF
     );
   }
 
-  async gridLedCol(x, y, state) {
+  gridLedCol(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -153,7 +153,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedRow(x, y, state) {
+  gridLedRow(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -164,7 +164,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedMap(x, y, state) {
+  gridLedMap(x, y, state) {
     if (!Array.isArray(state)) return;
     const data = [0, 0, 0, 0, 0, 0, 0, 0];
     for (let i = 0; i < Math.min(64, state.length); i++) {
@@ -175,7 +175,7 @@ export default class Mext extends Monome {
     return this.writeBuffer(ADDR_LED_GRID, CMD_LED_MAP, x, y, ...data);
   }
 
-  async gridLedIntensity(intensity) {
+  gridLedIntensity(intensity) {
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_INTENSITY,
@@ -183,7 +183,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevel(x, y, level) {
+  gridLedLevel(x, y, level) {
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_SET,
@@ -193,7 +193,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevelAll(level) {
+  gridLedLevelAll(level) {
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_ALL,
@@ -201,7 +201,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevelCol(x, y, state) {
+  gridLedLevelCol(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -212,7 +212,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevelRow(x, y, state) {
+  gridLedLevelRow(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -223,7 +223,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevelMap(x, y, state) {
+  gridLedLevelMap(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,

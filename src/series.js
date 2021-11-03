@@ -51,18 +51,18 @@ export default class Series extends Monome {
     }
   }
 
-  async gridLed(x, y, on) {
+  gridLed(x, y, on) {
     return this.write([
       on ? PROTO_SERIES_LED_ON : PROTO_SERIES_LED_OFF,
       (x << 4) | y,
     ]);
   }
 
-  async gridLedAll(on) {
+  gridLedAll(on) {
     return this.write([PROTO_SERIES_CLEAR | (on & 0x01)]);
   }
 
-  async gridLedCol(x, y, state) {
+  gridLedCol(x, y, state) {
     if (!Array.isArray(state)) return;
     /*
       y offset is seemingly ignored in the serial protocol?
@@ -74,7 +74,7 @@ export default class Series extends Monome {
     return this.write([mode | (x & 0x0f), packLineData(state)]);
   }
 
-  async gridLedRow(x, y, state) {
+  gridLedRow(x, y, state) {
     if (!Array.isArray(state)) return;
     /*
       x offset is seemingly ignored in the serial protocol?
@@ -86,7 +86,9 @@ export default class Series extends Monome {
     return this.write([mode | (y & 0x0f), packLineData(state)]);
   }
 
-  async gridLedIntensity(intensity) {
+  gridLedMap(x, y, state) { }
+
+  gridLedIntensity(intensity) {
     return this.write([
       PROTO_SERIES_INTENSITY | (clamp(intensity, 0, 15) & 0x0f),
     ]);
