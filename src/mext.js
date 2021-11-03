@@ -48,11 +48,10 @@ const CMD_KEY_DOWN = 0x1;
 const packHeader = (addr, cmd) => ((addr & 0xf) << 4) | (cmd & 0xf);
 const unpackHeader = header => [header >> 4, header & 0xf];
 
-const packBuffer = (addr, cmd, data) =>
-  [
-    packHeader(addr, cmd),
-    ...(Array.isArray(data) ? data : []),
-  ];
+const packBuffer = (addr, cmd, data) => [
+  packHeader(addr, cmd),
+  ...(Array.isArray(data) ? data : []),
+];
 
 const packIntensityData = (state, length) => {
   const data = [];
@@ -73,46 +72,46 @@ const packIntensityData = (state, length) => {
 };
 
 export default class Mext extends Monome {
-  constructor (device) {
+  constructor(device) {
     super(device);
   }
 
-  processData (data, start) {
+  processData(data, start) {
     const header = data.getUint8(start++);
     switch (header) {
-    case packHeader(ADDR_SYSTEM, SYS_QUERY_RESPONSE):
-      this.emit('query', {
-        type: data.getUint8(start++),
-        count: data.getUint8(start++)
-      });
-      break;
-    case packHeader(ADDR_SYSTEM, SYS_ID):
-      let str = '';
-      for (let i = 0; i < 32; i++) {
-        str += String.fromCharCode(data.getUint8(start++));
-      }
-      this.emit('getId', str);
-      break;
-    case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
-      this.emit('getGridSize', {
-        x: data.getUint8(start++),
-        y: data.getUint8(start++)
-      });
-      break;
-    case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
-      this.emit('gridKeyDown', {
-        x: data.getUint8(start++),
-        y: data.getUint8(start++)
-      });
-      break;
-    case packHeader(ADDR_KEY_GRID, CMD_KEY_UP):
-      this.emit('gridKeyUp', {
-        x: data.getUint8(start++),
-        y: data.getUint8(start++)
-      });
-      break;
-    default:
-      break;
+      case packHeader(ADDR_SYSTEM, SYS_QUERY_RESPONSE):
+        this.emit('query', {
+          type: data.getUint8(start++),
+          count: data.getUint8(start++),
+        });
+        break;
+      case packHeader(ADDR_SYSTEM, SYS_ID):
+        let str = '';
+        for (let i = 0; i < 32; i++) {
+          str += String.fromCharCode(data.getUint8(start++));
+        }
+        this.emit('getId', str);
+        break;
+      case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
+        this.emit('getGridSize', {
+          x: data.getUint8(start++),
+          y: data.getUint8(start++),
+        });
+        break;
+      case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
+        this.emit('gridKeyDown', {
+          x: data.getUint8(start++),
+          y: data.getUint8(start++),
+        });
+        break;
+      case packHeader(ADDR_KEY_GRID, CMD_KEY_UP):
+        this.emit('gridKeyUp', {
+          x: data.getUint8(start++),
+          y: data.getUint8(start++),
+        });
+        break;
+      default:
+        break;
     }
 
     if (data.byteLength > start + 1) {
@@ -120,35 +119,30 @@ export default class Mext extends Monome {
     }
   }
 
-  async query () {
+  async query() {
     return this.writeBuffer(ADDR_SYSTEM, SYS_QUERY);
   }
 
-  async getId () {
+  async getId() {
     return this.writeBuffer(ADDR_SYSTEM, SYS_GET_ID);
   }
 
-  async getGridSize () {
+  async getGridSize() {
     return this.writeBuffer(ADDR_SYSTEM, SYS_GET_GRID_SIZES);
   }
 
-  async gridLed (x, y, on) {
-    return this.writeBuffer(
-      ADDR_LED_GRID,
-      on ? CMD_LED_ON : CMD_LED_OFF,
-      x,
-      y
-    );
+  async gridLed(x, y, on) {
+    return this.writeBuffer(ADDR_LED_GRID, on ? CMD_LED_ON : CMD_LED_OFF, x, y);
   }
 
-  async gridLedAll (on) {
+  async gridLedAll(on) {
     return this.writeBuffer(
       ADDR_LED_GRID,
       on ? CMD_LED_ALL_ON : CMD_LED_ALL_OFF
     );
   }
 
-  async gridLedCol (x, y, state) {
+  async gridLedCol(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -159,7 +153,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedRow (x, y, state) {
+  async gridLedRow(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -170,19 +164,18 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedMap (x, y, state) {
+  async gridLedMap(x, y, state) {
     if (!Array.isArray(state)) return;
     const data = [0, 0, 0, 0, 0, 0, 0, 0];
     for (let i = 0; i < Math.min(64, state.length); i++) {
       const byteIndex = Math.floor(i / 8);
       const bitIndex = i % 8;
-      data[byteIndex] =
-        data[byteIndex] | (clamp(state[i], 0, 1) << bitIndex)
+      data[byteIndex] = data[byteIndex] | (clamp(state[i], 0, 1) << bitIndex);
     }
     return this.writeBuffer(ADDR_LED_GRID, CMD_LED_MAP, x, y, ...data);
   }
 
-  async gridLedIntensity (intensity) {
+  async gridLedIntensity(intensity) {
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_INTENSITY,
@@ -190,7 +183,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevel (x, y, level) {
+  async gridLedLevel(x, y, level) {
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_SET,
@@ -200,7 +193,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevelAll (level) {
+  async gridLedLevelAll(level) {
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_ALL,
@@ -208,7 +201,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevelCol (x, y, state) {
+  async gridLedLevelCol(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -219,7 +212,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevelRow (x, y, state) {
+  async gridLedLevelRow(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -230,7 +223,7 @@ export default class Mext extends Monome {
     );
   }
 
-  async gridLedLevelMap (x, y, state) {
+  async gridLedLevelMap(x, y, state) {
     if (!Array.isArray(state)) return;
     return this.writeBuffer(
       ADDR_LED_GRID,
@@ -241,7 +234,7 @@ export default class Mext extends Monome {
     );
   }
 
-  writeBuffer () {
+  writeBuffer() {
     return this.write(packBuffer(Array.from(arguments)));
   }
 }

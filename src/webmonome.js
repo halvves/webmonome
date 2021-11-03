@@ -5,11 +5,11 @@ import { err, ERR_NOT_SUPPORTED } from './utils.js';
 /* monome usb vendor id */
 const VENDOR_ID = 0x0403;
 
-export default async function connect () {
+export default async function connect() {
   let device;
   try {
     device = await navigator.usb.requestDevice({
-      filters: [{ vendorId: VENDOR_ID }]
+      filters: [{ vendorId: VENDOR_ID }],
     });
     await device.open();
     if (device.configuration === null) await device.selectConfiguration(1);
@@ -23,16 +23,16 @@ export default async function connect () {
   }
 }
 
-function factory (device) {
+function factory(device) {
   const Klass = {
     mext: Mext,
-    series: Series
+    series: Series,
   }[deviceType(device)];
 
   return new Klass(device);
-};
+}
 
-function deviceType (device) {
+function deviceType(device) {
   if (
     /^m(64|128|256)/.test(device.serialNumber) ||
     /^mk/.test(device.serialNumber)
