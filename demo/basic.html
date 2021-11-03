@@ -6,13 +6,13 @@
   </head>
   <body>
     <script type="module">
-      import connect from '../src/webmonome.js';
+      import WebMonome from '../src/webmonome.js';
       let monome;
 
       const btn = document.createElement('button');
       btn.innerHTML = 'connect';
       btn.addEventListener('click', async () => {
-        monome = await connect();
+        monome = await WebMonome.connect();
         setup()
       });
       document.body.appendChild(btn);
