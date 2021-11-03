@@ -4,8 +4,8 @@ import Monome from './monome.js';
 /* input from series device */
 const PROTO_SERIES_BUTTON_DOWN = 0x00;
 const PROTO_SERIES_BUTTON_UP = 0x10;
-const PROTO_SERIES_TILT = 0xD0;
-const PROTO_SERIES_AUX_INPUT = 0xE0;
+const PROTO_SERIES_TILT = 0xd0;
+const PROTO_SERIES_AUX_INPUT = 0xe0;
 
 /* output from series device  */
 const PROTO_SERIES_LED_ON = 0x20;
@@ -16,34 +16,34 @@ const PROTO_SERIES_LED_ROW_16 = 0x60;
 const PROTO_SERIES_LED_COL_16 = 0x70;
 const PROTO_SERIES_LED_FRAME = 0x80;
 const PROTO_SERIES_CLEAR = 0x90;
-const PROTO_SERIES_INTENSITY = 0xA0;
-const PROTO_SERIES_MODE = 0xB0;
-const PROTO_SERIES_AUX_PORT_ACTIVATE = 0xC0;
-const PROTO_SERIES_AUX_PORT_DEACTIVATE = 0xD0;
+const PROTO_SERIES_INTENSITY = 0xa0;
+const PROTO_SERIES_MODE = 0xb0;
+const PROTO_SERIES_AUX_PORT_ACTIVATE = 0xc0;
+const PROTO_SERIES_AUX_PORT_DEACTIVATE = 0xd0;
 
 export default class Series extends Monome {
-  constructor (device) {
+  constructor(device) {
     super(device);
   }
 
-  processData (data, start) {
+  processData(data, start) {
     const header = data.getUint8(start++);
     let x;
     let y;
     let datum;
     switch (header) {
-    case PROTO_SERIES_BUTTON_DOWN:
-      datum = data.getUint8(start++);
-      [x, y] = [datum >> 4, datum & 0xf];
-      this.emit('gridKeyDown', { x, y });
-      break;
-    case PROTO_SERIES_BUTTON_UP:
-      datum = data.getUint8(start++);
-      [x, y] = [datum >> 4, datum & 0xf];
-      this.emit('gridKeyUp', { x, y });
-      break;
-    default:
-      break;
+      case PROTO_SERIES_BUTTON_DOWN:
+        datum = data.getUint8(start++);
+        [x, y] = [datum >> 4, datum & 0xf];
+        this.emit('gridKeyDown', { x, y });
+        break;
+      case PROTO_SERIES_BUTTON_UP:
+        datum = data.getUint8(start++);
+        [x, y] = [datum >> 4, datum & 0xf];
+        this.emit('gridKeyUp', { x, y });
+        break;
+      default:
+        break;
     }
 
     if (data.byteLength > start + 1) {
@@ -51,50 +51,44 @@ export default class Series extends Monome {
     }
   }
 
-  async gridLed (x, y, on) {
+  async gridLed(x, y, on) {
     return this.write([
       on ? PROTO_SERIES_LED_ON : PROTO_SERIES_LED_OFF,
-      (x << 4) | y
+      (x << 4) | y,
     ]);
   }
 
-  async gridLedAll (on) {
+  async gridLedAll(on) {
     return this.write([PROTO_SERIES_CLEAR | (on & 0x01)]);
   }
 
-  async gridLedCol (x, y, state) {
+  async gridLedCol(x, y, state) {
     if (!Array.isArray(state)) return;
     /*
       y offset is seemingly ignored in the serial protocol?
       see: https://github.com/monome/libmonome/blob/cd11b2fde61b7ecd1c171cf9f8568918b0199df9/src/proto/series.c#L184
     */
-    const mode = state.length === 8 ? PROTO_SERIES_LED_COL_8 :
-      PROTO_SERIES_LED_COL_16;
+    const mode =
+      state.length === 8 ? PROTO_SERIES_LED_COL_8 : PROTO_SERIES_LED_COL_16;
 
-    return this.write([
-      mode | (x & 0x0F),
-      packLineData(state)
-    ]);
+    return this.write([mode | (x & 0x0f), packLineData(state)]);
   }
 
-  async gridLedRow (x, y, state) {
+  async gridLedRow(x, y, state) {
     if (!Array.isArray(state)) return;
     /*
       x offset is seemingly ignored in the serial protocol?
       see: https://github.com/monome/libmonome/blob/cd11b2fde61b7ecd1c171cf9f8568918b0199df9/src/proto/series.c#L209
     */
-    const mode = state.length === 8 ? PROTO_SERIES_LED_ROW_8 :
-      PROTO_SERIES_LED_ROW_16;
+    const mode =
+      state.length === 8 ? PROTO_SERIES_LED_ROW_8 : PROTO_SERIES_LED_ROW_16;
 
-    return this.write([
-      mode | (y & 0x0F),
-      packLineData(state)
-    ]);
+    return this.write([mode | (y & 0x0f), packLineData(state)]);
   }
 
-  async gridLedIntensity (intensity) {
+  async gridLedIntensity(intensity) {
     return this.write([
-      PROTO_SERIES_INTENSITY | (clamp(intensity, 0, 15) & 0x0F)
+      PROTO_SERIES_INTENSITY | (clamp(intensity, 0, 15) & 0x0f),
     ]);
   }
 }

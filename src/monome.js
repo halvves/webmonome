@@ -2,16 +2,16 @@ import {
   err,
   ERR_WRITE,
   ERR_WRITE_MISSING_BYTES,
-  USB_XFER_STATUS_OK
+  USB_XFER_STATUS_OK,
 } from './utils.js';
 
 export default class Monome {
-  constructor (device) {
+  constructor(device) {
     this.device = device;
     this.callbacks = {};
   }
 
-  async listen () {
+  async listen() {
     if (!this.isConnected) return;
     const result = await this.read(64);
 
@@ -22,12 +22,12 @@ export default class Monome {
     await this.listen();
   }
 
-  async read (byteLength) {
+  async read(byteLength) {
     if (!this.isConnected) return;
     return this.device.transferIn(1, byteLength);
   }
 
-  async write (data) {
+  async write(data) {
     const buffer = new Uint8Array(data);
     const result = await this.device.transferOut(2, buffer);
     if (result.status !== USB_XFER_STATUS_OK) err(ERR_WRITE);
@@ -35,16 +35,16 @@ export default class Monome {
     return result;
   }
 
-  get isConnected () {
+  get isConnected() {
     return Boolean(this.device && this.device.opened);
   }
 
-  on (eventName, fn) {
+  on(eventName, fn) {
     if (typeof fn !== 'function') return;
     (this.callbacks[eventName] = this.callbacks[eventName] || []).push(fn);
   }
 
-  off (eventName, fn) {
+  off(eventName, fn) {
     if (arguments.length === 0) {
       this.callbacks = {};
       return;
@@ -70,7 +70,7 @@ export default class Monome {
     }
   }
 
-  emit (name, payload) {
+  emit(name, payload) {
     const cbs = this.callbacks[name];
     if (!Array.isArray(cbs)) return;
     for (let i = 0; i < cbs.length; i++) {

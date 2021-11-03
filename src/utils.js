@@ -10,11 +10,11 @@ export const USB_XFER_STATUS_OK = 'ok';
 export const USB_XFER_STATUS_STALL = 'stall';
 export const USB_XFER_STATUS_BABBLE = 'babble';
 
-export function clamp (val, min, max) {
+export function clamp(val, min, max) {
   return Math.max(Math.min(val, max), min);
 }
 
-export function packLineData (state) {
+export function packLineData(state) {
   let data = 0;
   for (let i = 0; i < Math.min(8, state.length); i++) {
     data = data | (clamp(state[i], 0, 1) << i);
@@ -22,9 +22,9 @@ export function packLineData (state) {
   return data;
 }
 
-export function err (msg) {
+export function err(msg) {
   throw new Error(MSG_PREFIX + msg);
 }
-export function log (msg, level = 0) {
+export function log(msg, level = 0) {
   console[['log', 'warn', 'error'][level]](MSG_PREFIX + msg);
 }
