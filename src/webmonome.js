@@ -5,21 +5,23 @@ import { err, ERR_NOT_SUPPORTED } from './utils.js';
 /* monome usb vendor id */
 const VENDOR_ID = 0x0403;
 
-export default async function connect() {
-  let device;
-  try {
-    device = await navigator.usb.requestDevice({
-      filters: [{ vendorId: VENDOR_ID }],
-    });
-    await device.open();
-    if (device.configuration === null) await device.selectConfiguration(1);
-    await device.claimInterface(0);
-    const monome = factory(device);
-    monome.listen();
-    return monome;
-  } catch (e) {
-    device = null;
-    throw e;
+export default {
+  async connect() {
+    let device;
+    try {
+      device = await navigator.usb.requestDevice({
+        filters: [{ vendorId: VENDOR_ID }],
+      });
+      await device.open();
+      if (device.configuration === null) await device.selectConfiguration(1);
+      await device.claimInterface(0);
+      const monome = factory(device);
+      monome.listen();
+      return monome;
+    } catch (e) {
+      device = null;
+      throw e;
+    }
   }
 }
 
