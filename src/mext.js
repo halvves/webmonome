@@ -98,7 +98,7 @@ export default class Mext extends Monome {
           y: data.getUint8(start++),
         });
         break;
-      case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
+      case packHeader(ADDR_KEY_GRID, CMD_KEY_DOWN):
         this.emit('gridKeyDown', {
           x: data.getUint8(start++),
           y: data.getUint8(start++),
