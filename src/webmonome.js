@@ -1,12 +1,17 @@
 import Mext from './mext.js';
 import Series from './series.js';
-import { err, ERR_NOT_SUPPORTED } from './utils.js';
+import { log, err, WARN_NO_USB, ERR_NOT_SUPPORTED } from './utils.js';
 
 /* monome usb vendor id */
 const VENDOR_ID = 0x0403;
 
+/* check for support */
+const hasUsb = 'navigator' in window && 'usb' in navigator;
+
 export default {
   async connect() {
+    if (!hasUsb) return log(WARN_NO_USB, 1);
+
     let device;
     try {
       device = await navigator.usb.requestDevice({
