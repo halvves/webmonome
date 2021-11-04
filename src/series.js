@@ -51,6 +51,12 @@ export default class Series extends Monome {
     }
   }
 
+  query() {}
+
+  getId() {}
+
+  getGridSize() {}
+
   gridLed(x, y, on) {
     return this.write([
       on ? PROTO_SERIES_LED_ON : PROTO_SERIES_LED_OFF,
@@ -93,4 +99,14 @@ export default class Series extends Monome {
       PROTO_SERIES_INTENSITY | (clamp(intensity, 0, 15) & 0x0f),
     ]);
   }
+
+  gridLedLevel(x, y, level) {}
+
+  gridLedLevelAll(level) {}
+
+  gridLedLevelCol(x, y, state) {}
+
+  gridLedLevelRow(x, y, state) {}
+
+  gridLedLevelMap(x, y, state) {}
 }
