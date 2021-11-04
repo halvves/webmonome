@@ -100,13 +100,21 @@ export default class Series extends Monome {
     ]);
   }
 
-  gridLedLevel(x, y, level) {}
+  gridLedLevel(x, y, level) {
+    return this.gridLed(x, y, level > 7);
+  }
 
-  gridLedLevelAll(level) {}
+  gridLedLevelAll(level) {
+    return this.gridLedIntensity(level);
+  }
 
-  gridLedLevelCol(x, y, state) {}
+  gridLedLevelCol(x, y, state) {
+    return this.gridLedCol(x, y, state.map(level => level > 7));
+  }
 
-  gridLedLevelRow(x, y, state) {}
+  gridLedLevelRow(x, y, state) {
+    return this.gridLedRow(x, y, state.map(level => level > 7));
+  }
 
   gridLedLevelMap(x, y, state) {}
 }
