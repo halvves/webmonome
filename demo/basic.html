@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <title>WebMonome Demo</title>
+    <style>
+      canvas {
+        width: 90vmin;
+        height: 45vmin;
+      }
+    </style>
   </head>
   <body>
     <script type="module">
@@ -28,6 +34,9 @@
       const logEvent = e => {
         console.log(e);
       };
+
+      console.log(monome.canvas);
+      document.body.appendChild(monome.canvas);
 
       monome.on('gridKeyDown', keydown);
       monome.on('gridKeyUp', keyup);

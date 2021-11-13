@@ -1,6 +1,138 @@
+const GridUI = () => {
+  const canvas = document.createElement('canvas');
+  let initialized = false;
+  let domWidth = 0;
+  let domHeight = 0;
+  let gridWidth = 0;
+  let gridHeight = 0;
+
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 0;
+
+  const square = (x, y, on) => {
+    // early return if out of grid range
+    if (x >= gridWidth || y >= gridHeight) return;
+
+    // get dimensions
+    const squareWidth = canvas.width / gridWidth;
+    const squareHeight = canvas.height / gridHeight;
+    const minSquareDimension = Math.min(squareWidth, squareHeight);
+    const spacing = minSquareDimension / 8;
+    const radius = minSquareDimension / 8;
+    ctx.lineWidth = minSquareDimension / 16;
+
+    // get points
+    const x1 = x * minSquareDimension + spacing;
+    const x2 = (x + 1) * minSquareDimension - spacing;
+    const y1 = y * minSquareDimension + spacing;
+    const y2 = (y + 1) * minSquareDimension - spacing;
+
+    // canvas path ops
+    ctx.beginPath();
+    ctx.moveTo(x1 + radius, y1);
+    ctx.arcTo(x2, y1, x2, y2, radius);
+    ctx.arcTo(x2, y2, x1, y2, radius);
+    ctx.arcTo(x1, y2, x1, y1, radius);
+    ctx.arcTo(x1, y1, x2, y1, radius);
+    ctx.closePath();
+
+    // canvas draw ops
+    if (on) {
+      ctx.fillStyle = '#003dda';
+    } else {
+      ctx.fillStyle = '#fff';
+    }
+    ctx.fill();
+    ctx.stroke();
+  };
+
+  const row = (x, y, state) => {
+    const offsetX = Math.floor(x / 8) * 8;
+    for (let i = 0; i < 8; i++) {
+      square(offsetX + i, y, state[i]);
+    }
+  };
+
+  const col = (x, y, state) => {
+    const offsetY = Math.floor(y / 8) * 8;
+    for (let i = 0; i < 8; i++) {
+      square(x, offsetY + i, state[i]);
+    }
+  };
+
+  const map = (x, y, state) => {
+    const isArray = Array.isArray(state);
+    const offsetX = Math.floor(x / 8) * 8;
+    const offsetY = Math.floor(y / 8) * 8;
+    for (let i = 0; i < 64; i++) {
+      const x = (i % 8) + offsetX;
+      const y = Math.floor(i / 8) + offsetY;
+      square(x, y, isArray ? state[i] : !!state);
+    }
+  };
+
+  const all = on => {
+    let heightOffset = 0;
+    while (heightOffset < gridHeight) {
+      let widthOffset = 0;
+      while (widthOffset < gridWidth) {
+        map(widthOffset, heightOffset, on);
+        widthOffset += 8;
+      }
+      heightOffset += 8;
+    }
+  };
+
+  const updateDimensions = (x, y) => {
+    const scale = window.devicePixelRatio;
+    const rect = canvas.getBoundingClientRect();
+    domWidth = rect.width;
+    domHeight = rect.height;
+    gridWidth = x;
+    gridHeight = y;
+    canvas.height = rect.height * scale;
+    canvas.width = rect.width * scale;
+    if (!initialized) {
+      initialized = true;
+      all();
+    }
+  };
+
+  const getSquareFromEvent = e => {
+    const rect = canvas.getBoundingClientRect();
+
+    const squareWidth = rect.width / gridWidth;
+    const squareHeight = rect.height / gridHeight;
+    const minSquareDimension = Math.min(squareWidth, squareHeight);
+
+    const x = Math.floor(e.offsetX / minSquareDimension);
+    const y = Math.floor(e.offsetY / minSquareDimension);
+
+    if (x >= gridWidth || y >= gridHeight) return;
+
+    return {
+      x,
+      y,
+    };
+  };
+
+  return {
+    d: canvas,
+    s: square,
+    c: col,
+    r: row,
+    m: map,
+    a: all,
+    u: updateDimensions,
+    g: getSquareFromEvent,
+  };
+};
+
 const WebMonome = (function() {
   /* monome usb vendor id */
   const VENDOR_ID = 0x0403;
+  const VENDOR_ID_2021 = 0x0483;
 
   /* errors */
   const MSG_PREFIX = 'WebMonome: ';
@@ -133,9 +265,22 @@ const WebMonome = (function() {
       return {};
     }
 
+    // device state
     let device = null;
-    let callbacks = {};
+    let width = 16;
+    let height = 8;
 
+    // ui
+    const ui = GridUI();
+
+    const setDimensions = (x, y) => {
+      width = x;
+      height = y;
+      ui.u(width, height);
+    };
+
+    // event system
+    let callbacks = {};
     const emit = (name, payload) => {
       const cbs = callbacks[name];
       if (!Array.isArray(cbs)) return;
@@ -146,8 +291,77 @@ const WebMonome = (function() {
       }
     };
 
-    // is this the best way to constanly listen to a usb device?
+    const on = (eventName, fn) => {
+      if (typeof fn !== 'function') return;
+      (callbacks[eventName] = callbacks[eventName] || []).push(fn);
+    };
+
+    const off = (eventName, fn) => {
+      if (arguments.length === 0) {
+        callbacks = {};
+        return;
+      }
+
+      const cbs = callbacks[eventName];
+      if (!cbs) return;
+
+      if (arguments.length === 1) {
+        delete callbacks[eventName];
+        return;
+      }
+
+      for (let i = 0; i < cbs.length; i++) {
+        if (cbs[i] === fn) {
+          cbs.splice(i, 1);
+          break;
+        }
+      }
+
+      if (cbs.length === 0) {
+        delete callbacks[eventName];
+      }
+    };
+
+    // webui emits grid events
+    let pressed = false;
+    let prev = {};
+    ui.d.addEventListener('mousedown', e => {
+      pressed = true;
+      const pos = ui.g(e);
+      if (pos) emit('gridKeyDown', pos);
+      prev = {};
+    });
+
+    ui.d.addEventListener('mouseup', e => {
+      pressed = false;
+      const pos = ui.g(e);
+      if (pos) emit('gridKeyUp', pos);
+      prev = {};
+    });
+
+    window.addEventListener('mouseup', () => {
+      pressed = false;
+    });
+
+    ui.d.addEventListener('mouseleave', e => {
+      if (prev) emit('gridKeyUp', prev);
+      prev = {};
+    });
+
+    ui.d.addEventListener('mousemove', e => {
+      if (pressed) {
+        const pos = ui.g(e);
+        if (prev && (prev.x !== (pos && pos.x) || prev.y !== (pos && pos.y))) {
+          emit('gridKeyUp', prev);
+        }
+        if (pos) emit('gridKeyDown', pos);
+        prev = pos;
+      }
+    });
+
+    // incoming device data
     const deviceLoop = async () => {
+      // is this the best way to constanly listen to a usb device?
       // TODO: handle other loop breaks
       if (!isConnected(device)) return;
 
@@ -171,9 +385,12 @@ const WebMonome = (function() {
               emit('getId', str);
               break;
             case packHeader(ADDR_SYSTEM, SYS_GRID_SIZE):
+              const x = result.data.getUint8(start++);
+              const y = result.data.getUint8(start++);
+              setDimensions(x, y);
               emit('getGridSize', {
-                x: result.data.getUint8(start++),
-                y: result.data.getUint8(start++),
+                x,
+                y,
               });
               break;
             case packHeader(ADDR_KEY_GRID, CMD_KEY_DOWN):
@@ -201,174 +418,183 @@ const WebMonome = (function() {
       await deviceLoop();
     };
 
-    const monome = {
+    const connect = async function() {
+      try {
+        device = await navigator.usb.requestDevice({
+          filters: [{ vendorId: VENDOR_ID }, { vendorId: VENDOR_ID_2021 }],
+        });
+        await device.open();
+        if (device.configuration === null) await device.selectConfiguration(0);
+        await device.claimInterface(0);
+        deviceLoop();
+        getGridSize(); // call once running to init ui and grid state
+      } catch (e) {
+        device = null;
+        throw e;
+      }
+    };
+
+    const query = async () => {
+      return write(device, ADDR_SYSTEM, SYS_QUERY);
+    };
+
+    const getId = async () => {
+      return write(device, ADDR_SYSTEM, SYS_GET_ID);
+    };
+
+    const getGridSize = async () => {
+      return write(device, ADDR_SYSTEM, SYS_GET_GRID_SIZES);
+    };
+
+    const gridLed = async (x, y, on) => {
+      ui.s(x, y, on);
+      return write(device, ADDR_LED_GRID, on ? CMD_LED_ON : CMD_LED_OFF, x, y);
+    };
+
+    const gridLedAll = async on => {
+      ui.a(on);
+      return write(
+        device,
+        ADDR_LED_GRID,
+        on ? CMD_LED_ALL_ON : CMD_LED_ALL_OFF
+      );
+    };
+
+    const gridLedCol = async (x, y, state) => {
+      if (!Array.isArray(state)) return;
+      ui.c(x, y, state);
+      return write(
+        device,
+        ADDR_LED_GRID,
+        CMD_LED_COLUMN,
+        x,
+        y,
+        packLineData(state)
+      );
+    };
+
+    const gridLedRow = async (x, y, state) => {
+      if (!Array.isArray(state)) return;
+      ui.r(x, y, state);
+      return write(
+        device,
+        ADDR_LED_GRID,
+        CMD_LED_ROW,
+        x,
+        y,
+        packLineData(state)
+      );
+    };
+
+    const gridLedMap = async (x, y, state) => {
+      if (!Array.isArray(state)) return;
+      ui.m(x, y, state);
+      const data = [0, 0, 0, 0, 0, 0, 0, 0];
+      for (let i = 0; i < Math.min(64, state.length); i++) {
+        const byteIndex = Math.floor(i / 8);
+        const bitIndex = i % 8;
+        data[byteIndex] = data[byteIndex] | (clamp(state[i], 0, 1) << bitIndex);
+      }
+      return write(device, ADDR_LED_GRID, CMD_LED_MAP, x, y, ...data);
+    };
+
+    const gridLedIntensity = async intensity => {
+      return write(
+        device,
+        ADDR_LED_GRID,
+        CMD_LED_INTENSITY,
+        clamp(intensity, 0, 15)
+      );
+    };
+
+    // TODO: add level methods to GridUI
+    const gridLedLevel = async (x, y, level) => {
+      return write(
+        device,
+        ADDR_LED_GRID,
+        CMD_LED_LEVEL_SET,
+        x,
+        y,
+        clamp(level, 0, 15)
+      );
+    };
+
+    const gridLedLevelAll = async level => {
+      return write(
+        device,
+        ADDR_LED_GRID,
+        CMD_LED_LEVEL_ALL,
+        clamp(level, 0, 15)
+      );
+    };
+
+    const gridLedLevelCol = async (x, y, state) => {
+      if (!Array.isArray(state)) return;
+      return write(
+        device,
+        ADDR_LED_GRID,
+        CMD_LED_LEVEL_COLUMN,
+        x,
+        y,
+        ...packIntensityData(state, 8)
+      );
+    };
+
+    const gridLedLevelRow = async (x, y, state) => {
+      if (!Array.isArray(state)) return;
+      return write(
+        device,
+        ADDR_LED_GRID,
+        CMD_LED_LEVEL_ROW,
+        x,
+        y,
+        ...packIntensityData(state, 8)
+      );
+    };
+
+    const gridLedLevelMap = async (x, y, state) => {
+      if (!Array.isArray(state)) return;
+      return write(
+        device,
+        ADDR_LED_GRID,
+        CMD_LED_LEVEL_MAP,
+        x,
+        y,
+        ...packIntensityData(state, 64)
+      );
+    };
+
+    return Object.freeze({
       get connected() {
         return isConnected(device);
       },
-      connect: async function() {
-        try {
-          device = await navigator.usb.requestDevice({
-            filters: [{ vendorId: VENDOR_ID }],
-          });
-          await device.open();
-          if (device.configuration === null)
-            await device.selectConfiguration(1);
-          await device.claimInterface(0);
-          deviceLoop();
-        } catch (e) {
-          device = null;
-          throw e;
-        }
+      get width() {
+        return width;
       },
-      query: async function() {
-        return write(device, ADDR_SYSTEM, SYS_QUERY);
+      get height() {
+        return height;
       },
-      getId: async function() {
-        return write(device, ADDR_SYSTEM, SYS_GET_ID);
+      get canvas() {
+        return ui.d;
       },
-      getGridSize: async function() {
-        return write(device, ADDR_SYSTEM, SYS_GET_GRID_SIZES);
-      },
-      gridLed: async function(x, y, on) {
-        return write(
-          device,
-          ADDR_LED_GRID,
-          on ? CMD_LED_ON : CMD_LED_OFF,
-          x,
-          y
-        );
-      },
-      gridLedAll: async function(on) {
-        return write(
-          device,
-          ADDR_LED_GRID,
-          on ? CMD_LED_ALL_ON : CMD_LED_ALL_OFF
-        );
-      },
-      gridLedCol: async function(x, y, state) {
-        if (!Array.isArray(state)) return;
-        return write(
-          device,
-          ADDR_LED_GRID,
-          CMD_LED_COLUMN,
-          x,
-          y,
-          packLineData(state)
-        );
-      },
-      gridLedRow: async function(x, y, state) {
-        if (!Array.isArray(state)) return;
-        return write(
-          device,
-          ADDR_LED_GRID,
-          CMD_LED_ROW,
-          x,
-          y,
-          packLineData(state)
-        );
-      },
-      gridLedMap: async function(x, y, state) {
-        if (!Array.isArray(state)) return;
-        const data = [0, 0, 0, 0, 0, 0, 0, 0];
-        for (let i = 0; i < Math.min(64, state.length); i++) {
-          const byteIndex = Math.floor(i / 8);
-          const bitIndex = i % 8;
-          data[byteIndex] =
-            data[byteIndex] | (clamp(state[i], 0, 1) << bitIndex);
-        }
-        return write(device, ADDR_LED_GRID, CMD_LED_MAP, x, y, ...data);
-      },
-      gridLedIntensity: async function(intensity) {
-        return write(
-          device,
-          ADDR_LED_GRID,
-          CMD_LED_INTENSITY,
-          clamp(intensity, 0, 15)
-        );
-      },
-      gridLedLevel: async function(x, y, level) {
-        return write(
-          device,
-          ADDR_LED_GRID,
-          CMD_LED_LEVEL_SET,
-          x,
-          y,
-          clamp(level, 0, 15)
-        );
-      },
-      gridLedLevelAll: async function(level) {
-        return write(
-          device,
-          ADDR_LED_GRID,
-          CMD_LED_LEVEL_ALL,
-          clamp(level, 0, 15)
-        );
-      },
-      gridLedLevelCol: async function(x, y, state) {
-        if (!Array.isArray(state)) return;
-        return write(
-          device,
-          ADDR_LED_GRID,
-          CMD_LED_LEVEL_COLUMN,
-          x,
-          y,
-          ...packIntensityData(state, 8)
-        );
-      },
-      gridLedLevelRow: async function(x, y, state) {
-        if (!Array.isArray(state)) return;
-        return write(
-          device,
-          ADDR_LED_GRID,
-          CMD_LED_LEVEL_ROW,
-          x,
-          y,
-          ...packIntensityData(state, 8)
-        );
-      },
-      gridLedLevelMap: async function(x, y, state) {
-        if (!Array.isArray(state)) return;
-        return write(
-          device,
-          ADDR_LED_GRID,
-          CMD_LED_LEVEL_MAP,
-          x,
-          y,
-          ...packIntensityData(state, 64)
-        );
-      },
-      on: function(eventName, fn) {
-        if (typeof fn !== 'function') return;
-        (callbacks[eventName] = callbacks[eventName] || []).push(fn);
-      },
-      off: function(eventName, fn) {
-        if (arguments.length === 0) {
-          callbacks = {};
-          return;
-        }
-
-        const cbs = callbacks[eventName];
-        if (!cbs) return;
-
-        if (arguments.length === 1) {
-          delete callbacks[eventName];
-          return;
-        }
-
-        for (let i = 0; i < cbs.length; i++) {
-          if (cbs[i] === fn) {
-            cbs.splice(i, 1);
-            break;
-          }
-        }
-
-        if (cbs.length === 0) {
-          delete callbacks[eventName];
-        }
-      },
-    };
-
-    return monome;
+      connect,
+      query,
+      getId,
+      getGridSize,
+      gridLed,
+      gridLedAll,
+      gridLedCol,
+      gridLedRow,
+      gridLedMap,
+      gridLedIntensity,
+      gridLedLevel,
+      gridLedLevelAll,
+      gridLedLevelCol,
+      gridLedLevelRow,
+      gridLedLevelMap,
+      on,
+      off,
+    });
   };
 })();
 
