@@ -48,7 +48,7 @@ const CMD_KEY_DOWN = 0x1;
 const packHeader = (addr, cmd) => ((addr & 0xf) << 4) | (cmd & 0xf);
 const unpackHeader = header => [header >> 4, header & 0xf];
 
-const packBuffer = (addr, cmd, data) => [
+const packBuffer = ([addr, cmd, ...data]) => [
   packHeader(addr, cmd),
   ...(Array.isArray(data) ? data : []),
 ];
