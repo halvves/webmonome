@@ -70,6 +70,18 @@ monome.on('gridKeyUp', keyup);
 
 `webmonome` relies on the `WebUSB` api. information on browser support for the `WebUSB` api can be found over at [caniuse](https://caniuse.com/#feat=webusb).
 
+`webmonome` also requires that **serialosc is disabled**. On **macOS** open Terminal and execute:
+
+```
+launchctl unload /Library/LaunchAgents/org.monome.serialosc.plist
+ ```
+
+To re-enable:
+
+```
+launchctl load /Library/LaunchAgents/org.monome.serialosc.plist
+```
+
 ## api
 
 `webmonome` is currently very bare bones (as i'm still working out the kinks with WebUSB and the monome serial protocol), but there is enough there to perform most grid operations.
