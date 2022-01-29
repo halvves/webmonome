@@ -22,7 +22,7 @@
     "build": "rollup -c",
     "precommit": "lint-staged",
     "dev": "rollup -c -w",
-    "prepublishOnly": "npm run build",
+    "prepare": "npm run build",
     "pretty": "npm run pretty-src -- \"src/**/*.js\" && npm run pretty-pkg",
     "pretty-pkg": "prettier-package-json --write ./package.json",
     "pretty-src": "prettier --write"
