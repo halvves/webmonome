@@ -14,24 +14,8 @@ export default class Monome {
     this.callbacks = {};
 
     // set i/o based on chosen interface endpoints
-    // TODO: cleanup :'(
-    try {
-      this.device.configuration.interfaces[
-        getInterfaceForVendor(device.vendorId)
-      ].alternates[0].endpoints.forEach(({ direction, endpointNumber }) => {
-        if (direction === 'in' && this.endpointIn === undefined) {
-          this.endpointIn = endpointNumber;
-        } else if (direction === 'out' && this.endpointOut === undefined) {
-          this.endpointOut = endpointNumber;
-        }
-      });
-    } catch (e) {
-      log(e, 2);
-    }
-
-    // if unabled to dynmically set, we can try semi-sensible defaults
-    this.endpointIn = this.endpointIn === undefined ? 1 : this.endpointIn;
-    this.endpointOut = this.endpointOut === undefined ? 2 : this.endpointOut;
+    this.endpointIn = getEndpoint(device, 'in');
+    this.endpointOut = getEndpoint(device, 'out');
   }
 
   async listen() {
@@ -107,3 +91,21 @@ export default class Monome {
     }
   }
 }
+
+const getEndpointsForDevice = (device) => {
+  return device.configuration.interfaces[
+    getInterfaceForVendor(device.vendorId)
+  ].alternates[0].endpoints;
+};
+
+const getEndpoint = (device, dir) => {
+  const defaults = { in: 1, out: 2 };
+  let endpoint;
+  try {
+    const endpoints = getEndpointsForDevice(device);
+    endpoint = endpoints.find(({ direction }) => direction === dir);
+  } catch (e) {
+    log(e, 2);
+  }
+  return endpoint ? endpoint.endpointNumber : defaults[dir];
+};
