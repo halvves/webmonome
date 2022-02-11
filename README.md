@@ -2,8 +2,8 @@
 
 |   |   |
 |---|---|
-| npm | [0.0.1-alpha.5](https://www.npmjs.com/package/webmonome/v/alpha) |
-| size | [1.91kb minzipped](https://bundlephobia.com/result?p=webmonome@0.0.1-alpha.5) |
+| npm | [0.0.1-alpha.6](https://www.npmjs.com/package/webmonome/v/alpha) |
+| size | [1.96kb minzipped](https://bundlephobia.com/result?p=webmonome@0.0.1-alpha.6) |
 | dependencies | [zero](./package.json) |
 | license | [MIT](./LICENSE) |
 
