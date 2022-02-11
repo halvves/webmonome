@@ -55,7 +55,15 @@ export default class Series extends Monome {
 
   getId() {}
 
-  getGridSize() {}
+  getGridSize() {
+    const sizes = {
+      64: { x: 8, y: 8 },
+      128: { x: 16, y: 8 },
+      256: { x: 16, y: 16 }
+    };
+    const [_, size] = this.device.serialNumber.match(/^m(64|128|256)/);
+    this.emit('getGridSize', sizes[size]);
+  }
 
   gridLed(x, y, on) {
     return this.write([
