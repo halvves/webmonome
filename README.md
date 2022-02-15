@@ -265,9 +265,9 @@ system responses come in the form of events (see below), but this may be changed
 
 [npm-badge]: https://img.shields.io/npm/v/webmonome/alpha
 [npm-badge-url]: https://www.npmjs.com/package/webmonome/v/alpha
-[deps-badge]: https://img.shields.io/librariesio/release/npm/webmonome/0.0.1-alpha.5
+[deps-badge]: https://img.shields.io/librariesio/release/npm/webmonome/0.0.1-alpha.6
 [deps-badge-url]: https://libraries.io/npm/webmonome
-[size-badge]: https://img.shields.io/bundlephobia/minzip/webmonome/0.0.1-alpha.5
-[size-badge-url]: https://bundlephobia.com/result?p=webmonome@0.0.1-alpha.5
+[size-badge]: https://img.shields.io/bundlephobia/minzip/webmonome/0.0.1-alpha.6
+[size-badge-url]: https://bundlephobia.com/result?p=webmonome@0.0.1-alpha.6
 [license-badge]: https://img.shields.io/github/license/halvves/webmonome
 [license-badge-url]: ./LICENSE
