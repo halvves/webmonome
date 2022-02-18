@@ -65,14 +65,14 @@
         document.querySelector(`[value=x${x}y${y}]`).checked = checked
       }
 
-      const keydown = e => {
-        monome.gridLed(e.x, e.y, true);
-        check(e.x, e.y, true);
+      const keydown = ({ detail: { x, y } }) => {
+        monome.gridLed(x, y, true);
+        check(x, y, true);
       };
 
-      const keyup = e => {
-        monome.gridLed(e.x, e.y);
-        check(e.x, e.y);
+      const keyup = ({ detail: { x, y } }) => {
+        monome.gridLed(x, y);
+        check(x, y);
       };
 
       const logEvent = e => {
@@ -80,12 +80,12 @@
       };
 
       function setup () {
-        monome.on('gridKeyDown', keydown);
-        monome.on('gridKeyUp', keyup);
-        monome.on('query', logEvent);
-        monome.on('getId', logEvent);
-        monome.on('getGridOffsets', logEvent);
-        monome.on('getGridSize', logEvent);
+        monome.addEventListener('gridKeyDown', keydown);
+        monome.addEventListener('gridKeyUp', keyup);
+        monome.addEventListener('query', logEvent);
+        monome.addEventListener('getId', logEvent);
+        monome.addEventListener('getGridOffsets', logEvent);
+        monome.addEventListener('getGridSize', logEvent);
       }
     </script>
   </body>
