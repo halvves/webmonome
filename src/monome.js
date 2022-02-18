@@ -8,8 +8,9 @@ import {
 
 import { getInterfaceForVendor } from './webmonome.js';
 
-export default class Monome {
+export default class Monome extends EventTarget {
   constructor(device) {
+    super();
     this.device = device;
     this.callbacks = {};
 
@@ -50,45 +51,10 @@ export default class Monome {
     return Boolean(this.device && this.device.opened);
   }
 
-  on(eventName, fn) {
-    if (typeof fn !== 'function') return;
-    (this.callbacks[eventName] = this.callbacks[eventName] || []).push(fn);
-  }
-
-  off(eventName, fn) {
-    if (arguments.length === 0) {
-      this.callbacks = {};
-      return;
-    }
-
-    const cbs = this.callbacks[eventName];
-    if (!cbs) return;
-
-    if (arguments.length === 1) {
-      delete this.callbacks[eventName];
-      return;
-    }
-
-    for (let i = 0; i < cbs.length; i++) {
-      if (cbs[i] === fn) {
-        cbs.splice(i, 1);
-        break;
-      }
-    }
-
-    if (cbs.length === 0) {
-      delete this.callbacks[eventName];
-    }
-  }
-
-  emit(name, payload) {
-    const cbs = this.callbacks[name];
-    if (!Array.isArray(cbs)) return;
-    for (let i = 0; i < cbs.length; i++) {
-      const fn = cbs[i];
-      if (typeof fn !== 'function') skip;
-      fn(payload);
-    }
+  emit(eventName, payload) {
+    const event = new CustomEvent(eventName, { detail: payload })
+    this.dispatchEvent(event);
+    return event;
   }
 }
 
