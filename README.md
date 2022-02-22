@@ -226,7 +226,7 @@ system responses come in the form of events (see below), but this may be changed
 - subscribe to events:
 
   ```javascript
-  monome.on(eventName, callback)
+  monome.addEventListener(eventName, callback)
   ```
   - `eventName`: string
   - `callback`: function
@@ -235,7 +235,7 @@ system responses come in the form of events (see below), but this may be changed
 - unsubscribe from events:
 
   ```javascript
-  monome.off(eventName, callback)
+  monome.removeEventListener(eventName, callback)
   ```
   - `eventName`: string
   - `callback`: function
