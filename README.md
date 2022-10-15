@@ -2,8 +2,8 @@
 
 |   |   |
 |---|---|
-| npm | [0.0.1-alpha.4](https://www.npmjs.com/package/webmonome/v/alpha) |
-| size | [1.73kb minzipped](https://bundlephobia.com/result?p=webmonome@0.0.1-alpha.4) |
+| npm | [0.0.1-alpha.8](https://www.npmjs.com/package/webmonome) |
+| size | [1.96kb minzipped](https://bundlephobia.com/result?p=webmonome@0.0.1-alpha.8) |
 | dependencies | [zero](./package.json) |
 | license | [MIT](./LICENSE) |
 
@@ -71,6 +71,18 @@ monome.on('gridKeyUp', keyup);
 ## requirements
 
 `webmonome` relies on the `WebUSB` api. information on browser support for the `WebUSB` api can be found over at [caniuse](https://caniuse.com/#feat=webusb).
+
+`webmonome` also requires that **serialosc is disabled**. On **macOS** open Terminal and execute:
+
+```
+launchctl unload /Library/LaunchAgents/org.monome.serialosc.plist
+ ```
+
+To re-enable:
+
+```
+launchctl load /Library/LaunchAgents/org.monome.serialosc.plist
+```
 
 ## api
 
@@ -216,7 +228,7 @@ system responses come in the form of events (see below), but this may be changed
 - subscribe to events:
 
   ```javascript
-  monome.on(eventName, callback)
+  monome.addEventListener(eventName, callback)
   ```
   - `eventName`: string
   - `callback`: function
@@ -225,7 +237,7 @@ system responses come in the form of events (see below), but this may be changed
 - unsubscribe from events:
 
   ```javascript
-  monome.off(eventName, callback)
+  monome.removeEventListener(eventName, callback)
   ```
   - `eventName`: string
   - `callback`: function

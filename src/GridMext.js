@@ -1,5 +1,5 @@
-import { clamp, packLineData } from './utils.js';
-import Monome from './monome.js';
+import { clamp, packIntensityData, packLineData } from './utils.js';
+import DeviceBase from './DeviceBase.js';
 
 /* sections */
 const ADDR_SYSTEM = 0x0;
@@ -53,25 +53,7 @@ const packBuffer = ([addr, cmd, ...data]) => [
   ...(Array.isArray(data) ? data : []),
 ];
 
-const packIntensityData = (state, length) => {
-  const data = [];
-  for (let i = 0; i < Math.ceil(length / 2); i++) {
-    data[i] = 0;
-  }
-  for (let i = 0; i < Math.min(length, state.length); i++) {
-    const byteIndex = Math.floor(i / 2);
-    const nybbleIndex = i % 2;
-    const nybbleOffset = nybbleIndex === 0 ? 4 : 0;
-    if (typeof data[byteIndex] !== 'number') {
-      data[byteIndex] = 0;
-    }
-    data[byteIndex] =
-      data[byteIndex] | (clamp(state[i], 0, 15) << nybbleOffset);
-  }
-  return data;
-};
-
-export default class Mext extends Monome {
+export default class GridMext extends DeviceBase {
   constructor(device) {
     super(device);
   }

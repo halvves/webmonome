@@ -10,21 +10,59 @@ export const USB_XFER_STATUS_OK = 'ok';
 export const USB_XFER_STATUS_STALL = 'stall';
 export const USB_XFER_STATUS_BABBLE = 'babble';
 
-export function clamp(val, min, max) {
-  return Math.max(Math.min(val, max), min);
-}
+export const DEVICE_TYPE_MEXT = 0;
+export const DEVICE_TYPE_SERIES = 1;
 
-export function packLineData(state) {
+// logging
+export const log = (msg, level = 0) =>
+  console[['log', 'warn', 'error'][level]](MSG_PREFIX + msg);
+export const err = msg => {
+  throw new Error(MSG_PREFIX + msg);
+};
+
+// device detection
+const REGEX_SERIES = /^m(64|128|256)/;
+const REGEX_KIT = /^mk/;
+const REGEX_MEXT = /^[Mm]\d+/;
+export const deviceType = device => {
+  if (
+    REGEX_SERIES.test(device.serialNumber) ||
+    REGEX_KIT.test(device.serialNumber)
+  ) {
+    return DEVICE_TYPE_SERIES;
+  } else if (REGEX_MEXT.test(device.serialNumber)) {
+    return DEVICE_TYPE_MEXT;
+  } else {
+    err(ERR_NOT_SUPPORTED);
+  }
+};
+
+// math
+export const clamp = (val, min, max) => Math.max(Math.min(val, max), min);
+
+// bit ops
+export const packLineData = state => {
   let data = 0;
   for (let i = 0; i < Math.min(8, state.length); i++) {
     data = data | (clamp(state[i], 0, 1) << i);
   }
   return data;
-}
+};
 
-export function err(msg) {
-  throw new Error(MSG_PREFIX + msg);
-}
-export function log(msg, level = 0) {
-  console[['log', 'warn', 'error'][level]](MSG_PREFIX + msg);
-}
+export const packIntensityData = (state, length) => {
+  const data = [];
+  for (let i = 0; i < Math.ceil(length / 2); i++) {
+    data[i] = 0;
+  }
+  for (let i = 0; i < Math.min(length, state.length); i++) {
+    const byteIndex = Math.floor(i / 2);
+    const nybbleIndex = i % 2;
+    const nybbleOffset = nybbleIndex === 0 ? 4 : 0;
+    if (typeof data[byteIndex] !== 'number') {
+      data[byteIndex] = 0;
+    }
+    data[byteIndex] =
+      data[byteIndex] | (clamp(state[i], 0, 15) << nybbleOffset);
+  }
+  return data;
+};
