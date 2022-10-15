@@ -1,6 +1,9 @@
-const GridUI = (monome) => {
-    const { emit } = monome;
+const GridUI = () => {
+    let grid = null;
+    let emit = null;
     const canvas = document.createElement('canvas');
+    canvas.height = 400;
+    canvas.width = 400;
     let initialized = false;
     let gridWidth = 0;
     let gridHeight = 0;
@@ -86,14 +89,18 @@ const GridUI = (monome) => {
     const updateDimensions = (x, y) => {
       const scale = window.devicePixelRatio;
       const rect = canvas.getBoundingClientRect();
+      console.log(rect)
       gridWidth = x;
       gridHeight = y;
       canvas.height = rect.height * scale;
       canvas.width = rect.width * scale;
-      if (!initialized) {
-        initialized = true;
-        all();
-      }
+      all();
+
+      // TODO: old init logic necessary?
+      // if (!initialized) {
+      //   initialized = true;
+      //   all();
+      // }
     };
   
     const getSquareFromEvent = e => {
@@ -118,14 +125,14 @@ const GridUI = (monome) => {
     canvas.addEventListener('mousedown', e => {
       pressed = true;
       const pos = getSquareFromEvent(e);
-      if (pos) emit('gridKeyDown', pos);
+      if (emit && pos) emit('gridKeyDown', pos);
       prev = {};
     });
 
     canvas.addEventListener('mouseup', e => {
       pressed = false;
       const pos = getSquareFromEvent(e);
-      if (pos) emit('gridKeyUp', pos);
+      if (emit && pos) emit('gridKeyUp', pos);
       prev = {};
     });
 
@@ -134,29 +141,69 @@ const GridUI = (monome) => {
     });
 
     canvas.addEventListener('mouseleave', e => {
-      if (prev) emit('gridKeyUp', prev);
+      if (emit && prev) emit('gridKeyUp', prev);
       prev = {};
     });
 
     canvas.addEventListener('mousemove', e => {
       if (pressed) {
         const pos = getSquareFromEvent(e);
-        if (prev && (prev.x !== (pos && pos.x) || prev.y !== (pos && pos.y))) {
+        if (emit && prev && (prev.x !== (pos && pos.x) || prev.y !== (pos && pos.y))) {
           emit('gridKeyUp', prev);
         }
         if (pos) emit('gridKeyDown', pos);
         prev = pos;
       }
     });
-  
+
+    const handleGridLed = ({ detail: {x, y, on }}) => { square(x, y, on) };
+    const handleGridAll = ({ detail: { on }}) => { all(on) };
+    const handleGridCol = ({ detail: { x, y, state }}) => { col(x, y, state) };
+    const handleGridRow = ({ detail: { x, y, state }}) => { row(x, y, state) };
+    const handleGridMap = ({ detail: { x, y, state }}) => { map(x, y, state) };
+    const handleGetGridSize = ({ detail: { x, y }}) => { updateDimensions(x, y) };
+
+    const connect = (g) => {
+      grid = g;
+      emit = (...p) => grid.emit(...p);
+      grid.getGridSize();
+      grid.addEventListener('getGridSize', handleGetGridSize);
+      grid.addEventListener('gridLed', handleGridLed);
+      grid.addEventListener('gridLedAll', handleGridAll);
+      grid.addEventListener('gridLedCol', handleGridCol);
+      grid.addEventListener('gridLedRow', handleGridRow);
+      grid.addEventListener('gridLedMap', handleGridMap);
+    }
+
+    const disconnect = () => {
+      grid.removeEventListener('getGridSize', handleGetGridSize);
+      grid.removeEventListener('gridLed', handleGridLed);
+      grid.removeEventListener('gridLedAll', handleGridAll);
+      grid.removeEventListener('gridLedCol', handleGridCol);
+      grid.removeEventListener('gridLedRow', handleGridRow);
+      grid.removeEventListener('gridLedMap', handleGridMap);
+      grid = null;
+      emit == null;
+    }
+
+    // updateDimensions(16, 16);
+
     return {
-      d: canvas,
-      s: square,
-      c: col,
-      r: row,
-      m: map,
-      a: all,
-      u: updateDimensions,
-      g: getSquareFromEvent,
-    };
+      canvas,
+      connect,
+      disconnect
+    }
+  
+    // return {
+    //   d: canvas,
+    //   s: square,
+    //   c: col,
+    //   r: row,
+    //   m: map,
+    //   a: all,
+    //   u: updateDimensions,
+    //   g: getSquareFromEvent,
+    // };
   };
+
+  export default GridUI;

@@ -66,6 +66,7 @@ export default class GridSeries extends DeviceBase {
   }
 
   gridLed(x, y, on) {
+    this.emit('gridLed', {x, y, on});
     return this.write([
       on ? PROTO_SERIES_LED_ON : PROTO_SERIES_LED_OFF,
       (x << 4) | y,
@@ -73,11 +74,13 @@ export default class GridSeries extends DeviceBase {
   }
 
   gridLedAll(on) {
+    this.emit('gridLedAll', {on});
     return this.write([PROTO_SERIES_CLEAR | (on & 0x01)]);
   }
 
   gridLedCol(x, y, state) {
     if (!Array.isArray(state)) return;
+    this.emit('gridLedCol', {x, y, state});
     /*
       y offset is seemingly ignored in the serial protocol?
       see: https://github.com/monome/libmonome/blob/cd11b2fde61b7ecd1c171cf9f8568918b0199df9/src/proto/series.c#L184
@@ -90,6 +93,7 @@ export default class GridSeries extends DeviceBase {
 
   gridLedRow(x, y, state) {
     if (!Array.isArray(state)) return;
+    this.emit('gridLedRow', {x, y, state});
     /*
       x offset is seemingly ignored in the serial protocol?
       see: https://github.com/monome/libmonome/blob/cd11b2fde61b7ecd1c171cf9f8568918b0199df9/src/proto/series.c#L209
@@ -100,7 +104,9 @@ export default class GridSeries extends DeviceBase {
     return this.write([mode | (y & 0x0f), packLineData(state)]);
   }
 
-  gridLedMap(x, y, state) {}
+  gridLedMap(x, y, state) {
+    this.emit('gridLedMap', {x, y, state});
+  }
 
   gridLedIntensity(intensity) {
     return this.write([

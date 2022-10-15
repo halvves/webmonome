@@ -3,17 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <title>WebMonome Demo</title>
+    <style>
+      canvas {
+        height: 800px;
+        width: 500px;
+        max-width: 100%;
+      }
+    </style>
   </head>
   <body>
     <script type="module">
       import WebMonome from '../src/webmonome.js';
+      import GridUI from '../src/GridUI.js';
       let monome;
+
+      const ui = GridUI();
+      document.body.appendChild(ui.canvas);
 
       const btn = document.createElement('button');
       btn.innerHTML = 'connect';
       btn.addEventListener('click', async () => {
         monome = await WebMonome.connect();
-        setup()
+        ui.connect(monome);
+        setup();
+        window.monome = monome;
       });
       document.body.appendChild(btn);
 
