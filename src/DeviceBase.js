@@ -8,11 +8,10 @@ import {
 
 import { getInterfaceForVendor } from './webmonome.js';
 
-export default class Monome extends EventTarget {
+export default class DeviceBase extends EventTarget {
   constructor(device) {
     super();
     this.device = device;
-    this.callbacks = {};
 
     // set i/o based on chosen interface endpoints
     this.endpointIn = getEndpoint(device, 'in');
@@ -23,10 +22,6 @@ export default class Monome extends EventTarget {
     if (!this.isConnected) return;
     const result = await this.read(64);
 
-    // TODO: did i have a reason for skipping the first two bytes here?
-    // seems older mext send noisey bytes that i was skipping. 2021 devices
-    // run "silent" and skipping bytes breaks everything
-    // not skipping seems to still work fine for older mext
     if (result.status === 'ok' && result.data.byteLength > 0) {
       this.processData(result.data, 0);
     }
@@ -52,16 +47,15 @@ export default class Monome extends EventTarget {
   }
 
   emit(eventName, payload) {
-    const event = new CustomEvent(eventName, { detail: payload })
+    const event = new CustomEvent(eventName, { detail: payload });
     this.dispatchEvent(event);
     return event;
   }
 }
 
-const getEndpointsForDevice = (device) => {
-  return device.configuration.interfaces[
-    getInterfaceForVendor(device.vendorId)
-  ].alternates[0].endpoints;
+const getEndpointsForDevice = device => {
+  return device.configuration.interfaces[getInterfaceForVendor(device.vendorId)]
+    .alternates[0].endpoints;
 };
 
 const getEndpoint = (device, dir) => {

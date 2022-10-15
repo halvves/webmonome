@@ -1,6 +1,12 @@
-import Mext from './mext.js';
-import Series from './series.js';
-import { log, err, WARN_NO_USB, ERR_NOT_SUPPORTED } from './utils.js';
+import GridMext from './GridMext.js';
+import GridSeries from './GridSeries.js';
+import {
+  deviceType,
+  DEVICE_TYPE_MEXT,
+  DEVICE_TYPE_SERIES,
+  log,
+  WARN_NO_USB,
+} from './utils.js';
 
 /* monome usb vendor id */
 const VENDOR_ID_GENESIS = 0x0403;
@@ -46,22 +52,9 @@ export default {
 
 function factory(device) {
   const Klass = {
-    mext: Mext,
-    series: Series,
+    [DEVICE_TYPE_MEXT]: GridMext,
+    [DEVICE_TYPE_SERIES]: GridSeries,
   }[deviceType(device)];
 
   return new Klass(device);
-}
-
-function deviceType(device) {
-  if (
-    /^m(64|128|256)/.test(device.serialNumber) ||
-    /^mk/.test(device.serialNumber)
-  ) {
-    return 'series';
-  } else if (/^[Mm]\d+/.test(device.serialNumber)) {
-    return 'mext';
-  } else {
-    err(ERR_NOT_SUPPORTED);
-  }
 }

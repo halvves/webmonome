@@ -1,5 +1,5 @@
 import { clamp, packLineData } from './utils.js';
-import Monome from './monome.js';
+import DeviceBase from './DeviceBase.js';
 
 /* input from series device */
 const PROTO_SERIES_BUTTON_DOWN = 0x00;
@@ -21,7 +21,7 @@ const PROTO_SERIES_MODE = 0xb0;
 const PROTO_SERIES_AUX_PORT_ACTIVATE = 0xc0;
 const PROTO_SERIES_AUX_PORT_DEACTIVATE = 0xd0;
 
-export default class Series extends Monome {
+export default class GridSeries extends DeviceBase {
   constructor(device) {
     super(device);
   }
@@ -59,7 +59,7 @@ export default class Series extends Monome {
     const sizes = {
       64: { x: 8, y: 8 },
       128: { x: 16, y: 8 },
-      256: { x: 16, y: 16 }
+      256: { x: 16, y: 16 },
     };
     const [_, size] = this.device.serialNumber.match(/^m(64|128|256)/);
     this.emit('getGridSize', sizes[size]);
@@ -100,7 +100,7 @@ export default class Series extends Monome {
     return this.write([mode | (y & 0x0f), packLineData(state)]);
   }
 
-  gridLedMap(x, y, state) { }
+  gridLedMap(x, y, state) {}
 
   gridLedIntensity(intensity) {
     return this.write([
@@ -117,11 +117,19 @@ export default class Series extends Monome {
   }
 
   gridLedLevelCol(x, y, state) {
-    return this.gridLedCol(x, y, state.map(level => level > 7));
+    return this.gridLedCol(
+      x,
+      y,
+      state.map(level => level > 7)
+    );
   }
 
   gridLedLevelRow(x, y, state) {
-    return this.gridLedRow(x, y, state.map(level => level > 7));
+    return this.gridLedRow(
+      x,
+      y,
+      state.map(level => level > 7)
+    );
   }
 
   gridLedLevelMap(x, y, state) {}
