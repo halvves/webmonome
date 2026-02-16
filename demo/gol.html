@@ -1,171 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>webmonome - gol</title>
-    <style>
-      body {
-        height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      div {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        justify-content: center;
-      }
-      canvas {
-        width: 90vmin;
-        height: 45vmin;
-      }
-      button {
-        margin: 8px 0 0 0;
-        padding: 4px 8px;
-        border: 2px solid #000;
-        border-radius: 4px;
-        outline: none;
-        background: rgba(0, 0, 0, 0);
-        color: #000;
-      }
-    </style>
-  </head>
+	<head>
+		<meta charset="UTF-8" />
+		<title>webmonome - gol</title>
+		<style>
+			body {
+				height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			div {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-end;
+				justify-content: center;
+			}
+			canvas {
+				width: 90vmin;
+				height: 45vmin;
+			}
+			button {
+				margin: 8px 0 0 0;
+				padding: 4px 8px;
+				border: 2px solid #000;
+				border-radius: 4px;
+				outline: none;
+				background: rgba(0, 0, 0, 0);
+				color: #000;
+			}
+		</style>
+	</head>
 
-  <body>
-    <div>
-      <button>connect</button>
-    </div>
-    <script type="module">
-      import Monome from '../src/Monome.js';
+	<body>
+		<div>
+			<button>connect</button>
+		</div>
+		<script type="module">
+			import Monome from '../src/Monome.js';
 
-      const monome = new Monome();
-      const grid = monome.createCanvasGrid();
+			const monome = new Monome();
+			const grid = monome.createCanvasGrid();
 
-      const btn = document.querySelector('button');
-      btn.addEventListener('click', async () => {
-        await monome.connect();
-        monome.getGridSize();
-      });
+			const btn = document.querySelector('button');
+			btn.addEventListener('click', async () => {
+				await monome.connect();
+				monome.getGridSize();
+			});
 
-      const keydown = e => {
-        monome.gridLed(e.x, e.y, true);
-      };
+			const keydown = e => {
+				monome.gridLed(e.x, e.y, true);
+			};
 
-      const keyup = e => {
-        monome.gridLed(e.x, e.y);
-      };
+			const keyup = e => {
+				monome.gridLed(e.x, e.y);
+			};
 
-      const logEvent = e => {
-        console.log(e);
-      };
+			const logEvent = e => {
+				console.log(e);
+			};
 
-      const draw = (state, width, height) => {
-        const drawquad = (s, x, y) => {
-          const quad = s
-            .slice(y, y + 8)
-            .map(row => row.slice(x, x + 8))
-            .flat();
-          monome.gridLedMap(x, y, quad);
-        };
+			const draw = (state, width, height) => {
+				const drawquad = (s, x, y) => {
+					const quad = s
+						.slice(y, y + 8)
+						.map(row => row.slice(x, x + 8))
+						.flat();
+					monome.gridLedMap(x, y, quad);
+				};
 
-        let heightOffset = 0;
-        while (heightOffset < height) {
-          let widthOffset = 0;
-          while (widthOffset < width) {
-            drawquad(state, widthOffset, heightOffset);
-            widthOffset += 8;
-          }
-          heightOffset += 8;
-        }
-      };
+				let heightOffset = 0;
+				while (heightOffset < height) {
+					let widthOffset = 0;
+					while (widthOffset < width) {
+						drawquad(state, widthOffset, heightOffset);
+						widthOffset += 8;
+					}
+					heightOffset += 8;
+				}
+			};
 
-      const nextGeneration = state => {
-        const next = new Array(state.length);
-        for (let i = 0; i < state.length; i++) {
-          next[i] = new Array(state[i].length);
-          for (let j = 0; j < state[i].length; j++) {
-            const val = state[i][j];
-            const neighbors = countNeighbors(state, i, j);
+			const nextGeneration = state => {
+				const next = new Array(state.length);
+				for (let i = 0; i < state.length; i++) {
+					next[i] = new Array(state[i].length);
+					for (let j = 0; j < state[i].length; j++) {
+						const val = state[i][j];
+						const neighbors = countNeighbors(state, i, j);
 
-            if (!val && neighbors === 3) {
-              next[i][j] = 1;
-            } else if (val === 1 && (neighbors < 2 || neighbors > 3)) {
-              next[i][j] = 0;
-            } else {
-              next[i][j] = val;
-            }
-          }
-        }
-        return next;
-      };
+						if (!val && neighbors === 3) {
+							next[i][j] = 1;
+						} else if (val === 1 && (neighbors < 2 || neighbors > 3)) {
+							next[i][j] = 0;
+						} else {
+							next[i][j] = val;
+						}
+					}
+				}
+				return next;
+			};
 
-      const countNeighbors = (state, y, x) => {
-        let sum = 0;
-        const height = state.length;
-        const width = state[0].length;
+			const countNeighbors = (state, y, x) => {
+				let sum = 0;
+				const height = state.length;
+				const width = state[0].length;
 
-        for (let i = -1; i < 2; i++) {
-          for (let j = -1; j < 2; j++) {
-            const row = (y + i + height) % height;
-            const col = (x + j + width) % width;
-            sum += state[row][col];
-          }
-        }
-        sum -= state[y][x];
-        return sum;
-      };
+				for (let i = -1; i < 2; i++) {
+					for (let j = -1; j < 2; j++) {
+						const row = (y + i + height) % height;
+						const col = (x + j + width) % width;
+						sum += state[row][col];
+					}
+				}
+				sum -= state[y][x];
+				return sum;
+			};
 
-      let started = false;
-      const start = e => {
-        if (started) return;
-        started = true;
-        const HEIGHT = e.y;
-        const WIDTH = e.x;
-        const activekeys = {};
+			let started = false;
+			const start = e => {
+				if (started) return;
+				started = true;
+				const HEIGHT = e.y;
+				const WIDTH = e.x;
+				const activekeys = {};
 
-        let state = new Array(HEIGHT);
-        for (let i = 0; i < HEIGHT; i++) {
-          state[i] = new Array(WIDTH);
-          for (let j = 0; j < WIDTH; j++) {
-            state[i][j] = Math.floor(Math.random() * 2);
-          }
-        }
+				let state = new Array(HEIGHT);
+				for (let i = 0; i < HEIGHT; i++) {
+					state[i] = new Array(WIDTH);
+					for (let j = 0; j < WIDTH; j++) {
+						state[i][j] = Math.floor(Math.random() * 2);
+					}
+				}
 
-        const lifecycle = () => {
-          state = nextGeneration(state);
-          Object.values(activekeys).forEach(({ x, y }) => {
-            state[y][x] = 1;
-          });
-          draw(state, WIDTH, HEIGHT);
+				const lifecycle = () => {
+					state = nextGeneration(state);
+					Object.values(activekeys).forEach(({ x, y }) => {
+						state[y][x] = 1;
+					});
+					draw(state, WIDTH, HEIGHT);
 
-          setTimeout(lifecycle, 100);
-        };
+					setTimeout(lifecycle, 100);
+				};
 
-        lifecycle();
+				lifecycle();
 
-        let keysPressed = 0;
-        const keydown = e => {
-          keysPressed += 1;
-          activekeys[`x${e.x}y${e.y}`] = {
-            x: e.x,
-            y: e.y,
-          };
-          monome.gridLed(e.x, e.y, true);
-        };
+				let keysPressed = 0;
+				const keydown = e => {
+					keysPressed += 1;
+					activekeys[`x${e.x}y${e.y}`] = {
+						x: e.x,
+						y: e.y,
+					};
+					monome.gridLed(e.x, e.y, true);
+				};
 
-        const keyup = e => {
-          keysPressed = Math.max(keysPressed - 1, 0);
-          delete activekeys[`x${e.x}y${e.y}`];
-        };
+				const keyup = e => {
+					keysPressed = Math.max(keysPressed - 1, 0);
+					delete activekeys[`x${e.x}y${e.y}`];
+				};
 
-        monome.on('gridKeyDown', keydown);
-        monome.on('gridKeyUp', keyup);
-      };
+				monome.on('gridKeyDown', keydown);
+				monome.on('gridKeyUp', keyup);
+			};
 
-      monome.on('getGridSize', start);
+			monome.on('getGridSize', start);
 
-      document.querySelector('div').prepend(grid.canvas);
-    </script>
-  </body>
+			document.querySelector('div').prepend(grid.canvas);
+		</script>
+	</body>
 </html>

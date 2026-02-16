@@ -3,7 +3,7 @@
 |   |   |
 |---|---|
 | npm | [0.0.1-alpha.8](https://www.npmjs.com/package/webmonome) |
-| size | [1.96kb minzipped](https://bundlephobia.com/result?p=webmonome@0.0.1-alpha.8) |
+| size | [7kb minzipped](./scripts/sizecheck.js) |
 | dependencies | [zero](./package.json) |
 | license | [MIT](./LICENSE) |
 
