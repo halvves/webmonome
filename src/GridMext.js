@@ -102,22 +102,27 @@ export default class GridMext extends DeviceBase {
   }
 
   query() {
+    this.emit('query');
     return this.writeBuffer(ADDR_SYSTEM, SYS_QUERY);
   }
 
   getId() {
+    this.emit('getId');
     return this.writeBuffer(ADDR_SYSTEM, SYS_GET_ID);
   }
 
   getGridSize() {
+    this.emit('getGridSize');
     return this.writeBuffer(ADDR_SYSTEM, SYS_GET_GRID_SIZES);
   }
 
   gridLed(x, y, on) {
+    this.emit('gridLed', {x, y, on});
     return this.writeBuffer(ADDR_LED_GRID, on ? CMD_LED_ON : CMD_LED_OFF, x, y);
   }
 
   gridLedAll(on) {
+    this.emit('gridLedAll', {on});
     return this.writeBuffer(
       ADDR_LED_GRID,
       on ? CMD_LED_ALL_ON : CMD_LED_ALL_OFF
@@ -126,6 +131,7 @@ export default class GridMext extends DeviceBase {
 
   gridLedCol(x, y, state) {
     if (!Array.isArray(state)) return;
+    this.emit('gridLedCol', {x, y, state});
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_COLUMN,
@@ -137,6 +143,7 @@ export default class GridMext extends DeviceBase {
 
   gridLedRow(x, y, state) {
     if (!Array.isArray(state)) return;
+    this.emit('gridLedRow', {x, y, state});
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_ROW,
@@ -148,6 +155,7 @@ export default class GridMext extends DeviceBase {
 
   gridLedMap(x, y, state) {
     if (!Array.isArray(state)) return;
+    this.emit('gridLedMap', {x, y, state});
     const data = [0, 0, 0, 0, 0, 0, 0, 0];
     for (let i = 0; i < Math.min(64, state.length); i++) {
       const byteIndex = Math.floor(i / 8);
@@ -158,6 +166,7 @@ export default class GridMext extends DeviceBase {
   }
 
   gridLedIntensity(intensity) {
+    this.emit('gridLedIntensity', {intensity});
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_INTENSITY,
@@ -166,6 +175,7 @@ export default class GridMext extends DeviceBase {
   }
 
   gridLedLevel(x, y, level) {
+    this.emit('gridLedLevel', {x, y, level});
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_SET,
@@ -176,6 +186,7 @@ export default class GridMext extends DeviceBase {
   }
 
   gridLedLevelAll(level) {
+    this.emit('gridLedLevelAll', {level});
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_ALL,
@@ -185,6 +196,7 @@ export default class GridMext extends DeviceBase {
 
   gridLedLevelCol(x, y, state) {
     if (!Array.isArray(state)) return;
+    this.emit('gridLedLevelCol', {x, y, state});
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_COLUMN,
@@ -196,6 +208,7 @@ export default class GridMext extends DeviceBase {
 
   gridLedLevelRow(x, y, state) {
     if (!Array.isArray(state)) return;
+    this.emit('gridLedLevelRow', {x, y, state});
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_ROW,
@@ -207,6 +220,7 @@ export default class GridMext extends DeviceBase {
 
   gridLedLevelMap(x, y, state) {
     if (!Array.isArray(state)) return;
+    this.emit('gridLedLevelMap', {x, y, state});
     return this.writeBuffer(
       ADDR_LED_GRID,
       CMD_LED_LEVEL_MAP,
