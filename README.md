@@ -19,7 +19,7 @@
 <script src="https://unpkg.com/webmonome@alpha"></script>
 ```
 ```js
-const monome = new WebMonome();
+const monome = new Monome();
 
 const btn = document.createElement('button');
 btn.innerHTML = 'connect';
@@ -45,9 +45,9 @@ monome.on('gridKeyUp', keyup);
 `npm install webmonome@alpha`
 
 ```javascript
-import WebMonome from 'webmonome';
+import Monome from 'webmonome';
 
-const monome = new WebMonome();
+const monome = new Monome();
 
 const btn = document.createElement('button');
 btn.innerHTML = 'connect';
@@ -228,7 +228,7 @@ system responses come in the form of events (see below), but this may be changed
 - subscribe to events:
 
   ```javascript
-  monome.addEventListener(eventName, callback)
+  monome.on(eventName, callback)
   ```
   - `eventName`: string
   - `callback`: function
@@ -237,7 +237,7 @@ system responses come in the form of events (see below), but this may be changed
 - unsubscribe from events:
 
   ```javascript
-  monome.removeEventListener(eventName, callback)
+  monome.off(eventName, callback)
   ```
   - `eventName`: string
   - `callback`: function

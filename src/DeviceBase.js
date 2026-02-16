@@ -4,34 +4,40 @@ import {
   ERR_WRITE,
   ERR_WRITE_MISSING_BYTES,
   USB_XFER_STATUS_OK,
+  getEndpoint,
 } from './utils.js';
+import { ERROR } from './events.js';
 
-import { getInterfaceForVendor } from './webmonome.js';
+export class DeviceBase {
+  abort = new AbortController();
 
-export default class DeviceBase extends EventTarget {
-  constructor(device) {
-    super();
+  constructor(device, m) {
     this.device = device;
-
-    // set i/o based on chosen interface endpoints
+    this.m = m;
     this.endpointIn = getEndpoint(device, 'in');
     this.endpointOut = getEndpoint(device, 'out');
   }
 
-  async listen() {
-    if (!this.isConnected) return;
-    const result = await this.read(64);
-
-    if (result.status === 'ok' && result.data.byteLength > 0) {
-      this.processData(result.data, 0);
-    }
-
-    await this.listen();
+  get isConnected() {
+    return Boolean(this.device && this.device.opened);
   }
 
-  async read(byteLength) {
-    if (!this.isConnected) return;
-    return this.device.transferIn(this.endpointIn, byteLength);
+  async listen() {
+    while (this.isConnected) {
+      try {
+        const result = await this.device.transferIn(this.endpointIn, 64);
+        if (result.status === USB_XFER_STATUS_OK) {
+          if (result.data.byteLength > 0) this.processData(result.data);
+        } else {
+          log('transferIn status not ok: ' + result.status, 1);
+        }
+      } catch (e) {
+        if (!this.isConnected) return;
+        log('listen error: ' + e.message, 2);
+        this.m.emit(ERROR, { error: e });
+        return;
+      }
+    }
   }
 
   async write(data) {
@@ -42,30 +48,15 @@ export default class DeviceBase extends EventTarget {
     return result;
   }
 
-  get isConnected() {
-    return Boolean(this.device && this.device.opened);
+  processData() {
+    log('processData not implemented for this device', 1);
   }
 
-  emit(eventName, payload) {
-    const event = new CustomEvent(eventName, { detail: payload });
-    this.dispatchEvent(event);
-    return event;
+  async dispose() {
+    this.abort.abort();
+    if (this.device) {
+      await this.device.close();
+      this.device = null;
+    }
   }
 }
-
-const getEndpointsForDevice = device => {
-  return device.configuration.interfaces[getInterfaceForVendor(device.vendorId)]
-    .alternates[0].endpoints;
-};
-
-const getEndpoint = (device, dir) => {
-  const defaults = { in: 1, out: 2 };
-  let endpoint;
-  try {
-    const endpoints = getEndpointsForDevice(device);
-    endpoint = endpoints.find(({ direction }) => direction === dir);
-  } catch (e) {
-    log(e, 2);
-  }
-  return endpoint ? endpoint.endpointNumber : defaults[dir];
-};

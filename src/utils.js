@@ -37,6 +37,39 @@ export const deviceType = device => {
   }
 };
 
+// interface mapping
+export const VENDOR_ID_GENESIS = 0x0403;
+export const VENDOR_ID_2021 = 0x0483;
+
+// based on personal observation, unsure if there is a
+// a dynamic way to determine these (right now, i just
+// know from exp that 2021 devices have to claim interface
+// 1 instead of 0)
+const interfaceMap = {
+  [VENDOR_ID_GENESIS]: 0,
+  [VENDOR_ID_2021]: 1,
+};
+
+export const getInterfaceForVendor = vendorId => interfaceMap[vendorId] || 0;
+
+// endpoints (get i/o based on chosen interface endpoints)
+const getEndpointsForDevice = device => {
+  return device.configuration.interfaces[getInterfaceForVendor(device.vendorId)]
+    .alternates[0].endpoints;
+};
+
+export const getEndpoint = (device, dir) => {
+  const defaults = { in: 1, out: 2 };
+  let endpoint;
+  try {
+    const endpoints = getEndpointsForDevice(device);
+    endpoint = endpoints.find(({ direction }) => direction === dir);
+  } catch (e) {
+    log(e, 2);
+  }
+  return endpoint ? endpoint.endpointNumber : defaults[dir];
+};
+
 // math
 export const clamp = (val, min, max) => Math.max(Math.min(val, max), min);
 

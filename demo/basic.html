@@ -2,10 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>WebMonome Demo</title>
+    <title>webmonome - basic</title>
     <style>
       canvas {
-        height: 800px;
+        height: 500px;
         width: 500px;
         max-width: 100%;
       }
@@ -13,41 +13,31 @@
   </head>
   <body>
     <script type="module">
-      import WebMonome from '../src/webmonome.js';
-      import GridUI from '../src/GridUI.js';
-      let monome;
+      import Monome from '../src/Monome.js';
+      const monome = new Monome();
+      window.monome = monome;
 
-      const ui = GridUI();
-      document.body.appendChild(ui.canvas);
+      // create a canvas grid (works immediately, no hardware needed)
+      const grid = monome.createCanvasGrid();
+      document.body.appendChild(grid.canvas);
 
+      // connect button (optional — adds hardware mirroring)
       const btn = document.createElement('button');
       btn.innerHTML = 'connect';
       btn.addEventListener('click', async () => {
-        monome = await WebMonome.connect();
-        ui.connect(monome);
-        setup();
-        window.monome = monome;
+        await monome.connect();
+        monome.getGridSize();
       });
       document.body.appendChild(btn);
 
       const all = document.createElement('button');
       all.innerHTML = 'all';
-      all.addEventListener('click', () => {
-        monome.gridLedAll(true);
-        document.querySelectorAll(`[type=checkbox]`).forEach(
-          i => i.checked = true
-        );
-      });
+      all.addEventListener('click', () => monome.gridLedAll(true));
       document.body.appendChild(all);
 
       const clear = document.createElement('button');
       clear.innerHTML = 'clear';
-      clear.addEventListener('click', () => {
-        monome.gridLedAll();
-        document.querySelectorAll(`[type=checkbox]`).forEach(
-          i => i.checked = false
-        );
-      });
+      clear.addEventListener('click', () => monome.gridLedAll(false));
       document.body.appendChild(clear);
 
       const intensity = document.createElement('input');
@@ -56,50 +46,23 @@
       intensity.max = 15;
       intensity.value = 15;
       intensity.addEventListener('input', () => {
-        monome.gridLedIntensity(intensity.value);
+        monome.gridLedIntensity(parseInt(intensity.value));
       });
       document.body.appendChild(intensity);
 
-      for (let y = 0; y < 16; y++) {
-        const row = document.createElement('div');
-        for (let x = 0; x < 16; x++) {
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox'
-          checkbox.value = `x${x}y${y}`;
-          checkbox.addEventListener('change', () => {
-            monome.gridLed(x, y, checkbox.checked);
-          });
-          row.appendChild(checkbox);
-        }
-        document.body.appendChild(row);
-      }
-
-      const check = (x, y, checked) => {
-        document.querySelector(`[value=x${x}y${y}]`).checked = checked
-      }
-
-      const keydown = ({ detail: { x, y } }) => {
+      // toggle LEDs on key press
+      monome.on('gridKeyDown', ({ x, y }) => {
         monome.gridLed(x, y, true);
-        check(x, y, true);
-      };
+      });
 
-      const keyup = ({ detail: { x, y } }) => {
-        monome.gridLed(x, y);
-        check(x, y);
-      };
+      monome.on('gridKeyUp', ({ x, y }) => {
+        monome.gridLed(x, y, false);
+      });
 
-      const logEvent = e => {
-        console.log(e);
-      };
-
-      function setup () {
-        monome.addEventListener('gridKeyDown', keydown);
-        monome.addEventListener('gridKeyUp', keyup);
-        monome.addEventListener('query', logEvent);
-        monome.addEventListener('getId', logEvent);
-        monome.addEventListener('getGridOffsets', logEvent);
-        monome.addEventListener('getGridSize', logEvent);
-      }
+      // log system events
+      monome.on('getGridSize', data => console.log('grid size:', data));
+      monome.on('query', data => console.log('query:', data));
+      monome.on('getId', data => console.log('id:', data));
     </script>
   </body>
 </html>
