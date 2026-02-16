@@ -38,12 +38,17 @@
     </div>
     <script type="module">
       import WebMonome from '../src/webmonome.js';
-      const monome = new WebMonome();
-      window.monome = monome;
+      import GridUI from '../src/GridUI.js';
+
+      let monome;
+      const ui = GridUI();
 
       const btn = document.querySelector('button');
-      btn.addEventListener('click', () => {
-        monome.connect();
+      btn.addEventListener('click', async () => {
+        monome = await WebMonome.connect();
+        ui.connect(monome);
+        window.monome = monome;
+        monome.addEventListener('getGridSize', start);
       });
 
       const keydown = e => {
@@ -115,7 +120,7 @@
       };
 
       let started = false;
-      const start = e => {
+      const start = ({ detail: e }) => {
         if (started) return;
         started = true;
         const HEIGHT = e.y;
@@ -143,7 +148,7 @@
         lifecycle();
 
         let keysPressed = 0;
-        const keydown = e => {
+        const keydown = ({ detail: e }) => {
           keysPressed += 1;
           activekeys[`x${e.x}y${e.y}`] = {
             x: e.x,
@@ -152,18 +157,16 @@
           monome.gridLed(e.x, e.y, true);
         };
 
-        const keyup = e => {
+        const keyup = ({ detail: e }) => {
           keysPressed = Math.max(keysPressed - 1, 0);
           delete activekeys[`x${e.x}y${e.y}`];
         };
 
-        monome.on('gridKeyDown', keydown);
-        monome.on('gridKeyUp', keyup);
+        monome.addEventListener('gridKeyDown', keydown);
+        monome.addEventListener('gridKeyUp', keyup);
       };
 
-      monome.on('getGridSize', start);
-
-      document.querySelector('div').prepend(monome.canvas);
+      document.querySelector('div').prepend(ui.canvas);
     </script>
   </body>
 </html>
