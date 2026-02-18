@@ -13,28 +13,34 @@ export class CanvasGrid {
 	#m;
 	#ctx;
 	#cache = new Set();
-	#gridWidth;
-	#gridHeight;
+	#gridWidth = 16;
+	#gridHeight = 8;
 	#pressed = false;
 	#prev = {};
 	#abort = new AbortController();
 	#resizeObserver;
 
+	#activeColor = '#003dda';
+	#inactiveColor = '#fff';
+	#borderColor = '#000';
+
 	canvas;
 
-	constructor(width, height, m) {
+	constructor(m, { width, height, activeColor, inactiveColor, borderColor }) {
 		this.#m = m;
-		this.#gridWidth = width;
-		this.#gridHeight = height;
+		this.#gridWidth = width || this.#gridWidth;
+		this.#gridHeight = height || this.#gridHeight;
+		this.#activeColor = activeColor || this.#activeColor;
+		this.#inactiveColor = inactiveColor || this.#inactiveColor;
+		this.#borderColor = borderColor || this.#borderColor;
 
 		this.canvas = document.createElement('canvas');
 		this.#ctx = this.canvas.getContext('2d');
-		this.#ctx.strokeStyle = '#000';
 		this.#ctx.lineWidth = 0;
 
 		this.#bindCanvasEvents();
 		this.#bindMonomeEvents();
-		this.#updateDimensions(width, height);
+		this.#updateDimensions(this.#gridWidth, this.#gridHeight);
 
 		this.#resizeObserver = new ResizeObserver(() => {
 			this.#updateDimensions(this.#gridWidth, this.#gridHeight);
@@ -69,12 +75,14 @@ export class CanvasGrid {
 		const cacheId = `${x}_${y}`;
 		if (on) {
 			this.#cache.add(cacheId);
-			this.#ctx.fillStyle = '#003dda';
+			this.#ctx.fillStyle = this.#activeColor;
 		} else {
 			this.#cache.delete(cacheId);
-			this.#ctx.fillStyle = '#fff';
+			this.#ctx.fillStyle = this.#inactiveColor;
 		}
 		this.#ctx.fill();
+
+		this.#ctx.strokeStyle = this.#borderColor;
 		this.#ctx.stroke();
 	}
 
@@ -315,6 +323,13 @@ export class CanvasGrid {
 			},
 			opts
 		);
+	}
+
+	updateTheme({ activeColor, inactiveColor, borderColor }) {
+		if (activeColor) this.#activeColor = activeColor;
+		if (inactiveColor) this.#inactiveColor = inactiveColor;
+		if (borderColor) this.#borderColor = borderColor;
+		this.#redrawFromCache();
 	}
 
 	dispose() {

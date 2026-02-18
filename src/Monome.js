@@ -142,8 +142,8 @@ class Monome extends EventTarget {
 		}
 	}
 
-	createCanvasGrid({ width = 16, height = 8 } = {}) {
-		const v = new CanvasGrid(width, height, this);
+	createCanvasGrid(config = {}) {
+		const v = new CanvasGrid(this, config);
 		this.#canvases.add(v);
 		return v;
 	}

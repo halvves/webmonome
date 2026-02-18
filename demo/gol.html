@@ -9,6 +9,7 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
+				background: #0f0f0f;
 			}
 			div {
 				display: flex;
@@ -23,11 +24,11 @@
 			button {
 				margin: 8px 0 0 0;
 				padding: 4px 8px;
-				border: 2px solid #000;
+				border: 2px solid rgba(255, 255, 255, .9);
 				border-radius: 4px;
 				outline: none;
-				background: rgba(0, 0, 0, 0);
-				color: #000;
+				background: rgba(255, 255, 255, .9);
+				color: #0f0f0f;
 			}
 		</style>
 	</head>
@@ -40,7 +41,11 @@
 			import Monome from '../src/Monome.js';
 
 			const monome = new Monome();
-			const grid = monome.createCanvasGrid();
+			const grid = monome.createCanvasGrid({
+				activeColor: '#efefef',
+				inactiveColor: '#0f0f0f',
+				borderColor: '#efefef',
+			});
 
 			const btn = document.querySelector('button');
 			btn.addEventListener('click', async () => {
