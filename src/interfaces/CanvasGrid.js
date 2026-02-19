@@ -7,12 +7,25 @@ import {
 	GRID_LED_COL,
 	GRID_LED_MAP,
 	GRID_LED_ROW,
+	GRID_LED_LEVEL,
+	GRID_LED_LEVEL_ALL,
+	GRID_LED_LEVEL_COL,
+	GRID_LED_LEVEL_ROW,
+	GRID_LED_LEVEL_MAP,
 } from '../events.js';
+
+function valueToLevel(value) {
+	if (typeof value === 'boolean') {
+		return value ? 15 : 0;
+	}
+
+	return Math.max(0, Math.min(15, value));
+}
 
 export class CanvasGrid {
 	#m;
 	#ctx;
-	#cache = new Set();
+	#cache = new Map();
 	#gridWidth = 16;
 	#gridHeight = 8;
 	#pressed = false;
@@ -49,9 +62,10 @@ export class CanvasGrid {
 		this.#resizeObserver.observe(this.canvas);
 	}
 
-	#square(x, y, on) {
+	#square(x, y, value) {
 		if (x >= this.#gridWidth || y >= this.#gridHeight) return;
 
+		const level = valueToLevel(value);
 		const squareWidth = this.canvas.width / this.#gridWidth;
 		const squareHeight = this.canvas.height / this.#gridHeight;
 		const minDim = Math.min(squareWidth, squareHeight);
@@ -72,51 +86,58 @@ export class CanvasGrid {
 		this.#ctx.arcTo(x1, y1, x2, y1, radius);
 		this.#ctx.closePath();
 
-		const cacheId = `${x}_${y}`;
-		if (on) {
-			this.#cache.add(cacheId);
-			this.#ctx.fillStyle = this.#activeColor;
-		} else {
-			this.#cache.delete(cacheId);
+		this.#cache.set(`${x}_${y}`, level);
+		if (level === 0) {
 			this.#ctx.fillStyle = this.#inactiveColor;
+			this.#ctx.fill();
+		} else if (level === 15) {
+			this.#ctx.fillStyle = this.#activeColor;
+			this.#ctx.fill();
+		} else {
+			this.#ctx.fillStyle = this.#inactiveColor;
+			this.#ctx.fill();
+			this.#ctx.globalAlpha = level / 15;
+			this.#ctx.fillStyle = this.#activeColor;
+			this.#ctx.fill();
+			this.#ctx.globalAlpha = 1;
 		}
-		this.#ctx.fill();
 
 		this.#ctx.strokeStyle = this.#borderColor;
 		this.#ctx.stroke();
 	}
 
-	#row(x, y, state) {
+	#row(x, y, state, isLevel = false) {
 		const offsetX = Math.floor(x / 8) * 8;
 		for (let i = 0; i < 8; i++) {
-			this.#square(offsetX + i, y, state[i]);
+			this.#square(offsetX + i, y, isLevel ? state[i] : Boolean(state[i]));
 		}
 	}
 
-	#col(x, y, state) {
+	#col(x, y, state, isLevel = false) {
 		const offsetY = Math.floor(y / 8) * 8;
 		for (let i = 0; i < 8; i++) {
-			this.#square(x, offsetY + i, state[i]);
+			this.#square(x, offsetY + i, isLevel ? state[i] : Boolean(state[i]));
 		}
 	}
 
-	#map(x, y, state) {
+	#map(x, y, state, isLevel = false) {
 		const isArray = Array.isArray(state);
 		const offsetX = Math.floor(x / 8) * 8;
 		const offsetY = Math.floor(y / 8) * 8;
 		for (let i = 0; i < 64; i++) {
 			const mx = (i % 8) + offsetX;
 			const my = Math.floor(i / 8) + offsetY;
-			this.#square(mx, my, isArray ? state[i] : !!state);
+			const val = isArray ? state[i] : state;
+			this.#square(mx, my, isLevel ? val : Boolean(val));
 		}
 	}
 
-	#all(on) {
+	#all(value, isLevel = false) {
 		let heightOffset = 0;
 		while (heightOffset < this.#gridHeight) {
 			let widthOffset = 0;
 			while (widthOffset < this.#gridWidth) {
-				this.#map(widthOffset, heightOffset, on);
+				this.#map(widthOffset, heightOffset, value, isLevel);
 				widthOffset += 8;
 			}
 			heightOffset += 8;
@@ -138,7 +159,7 @@ export class CanvasGrid {
 	#redrawFromCache() {
 		for (let x = 0; x < this.#gridWidth; x++) {
 			for (let y = 0; y < this.#gridHeight; y++) {
-				this.#square(x, y, this.#cache.has(`${x}_${y}`));
+				this.#square(x, y, this.#cache.get(`${x}_${y}`) ?? 0);
 			}
 		}
 	}
@@ -270,7 +291,6 @@ export class CanvasGrid {
 		);
 	}
 
-	// TODO: still needs implementation for level events
 	#bindMonomeEvents() {
 		const m = this.#m;
 		const opts = { signal: this.#abort.signal };
@@ -311,6 +331,46 @@ export class CanvasGrid {
 			GRID_LED_MAP,
 			({ detail: { x, y, state } }) => {
 				this.#map(x, y, state);
+			},
+			opts
+		);
+
+		m.addEventListener(
+			GRID_LED_LEVEL,
+			({ detail: { x, y, level } }) => {
+				this.#square(x, y, level);
+			},
+			opts
+		);
+
+		m.addEventListener(
+			GRID_LED_LEVEL_ALL,
+			({ detail: { level } }) => {
+				this.#all(level, true);
+			},
+			opts
+		);
+
+		m.addEventListener(
+			GRID_LED_LEVEL_COL,
+			({ detail: { x, y, state } }) => {
+				this.#col(x, y, state, true);
+			},
+			opts
+		);
+
+		m.addEventListener(
+			GRID_LED_LEVEL_ROW,
+			({ detail: { x, y, state } }) => {
+				this.#row(x, y, state, true);
+			},
+			opts
+		);
+
+		m.addEventListener(
+			GRID_LED_LEVEL_MAP,
+			({ detail: { x, y, state } }) => {
+				this.#map(x, y, state, true);
 			},
 			opts
 		);

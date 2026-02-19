@@ -7,21 +7,20 @@
 			body {
 				height: 100vh;
 				display: flex;
+				flex-direction: column;
 				align-items: center;
 				justify-content: center;
 				background: #0f0f0f;
 			}
-			div {
-				display: flex;
-				flex-direction: column;
-				align-items: flex-end;
-				justify-content: center;
-			}
 			canvas {
-				width: 90vmin;
-				height: 45vmin;
+				max-width: 90%;
+				max-height: 90%;
+				aspect-ratio: 2;
 			}
 			button {
+				position: absolute;
+				bottom: 16px;
+				right: 16px;
 				margin: 8px 0 0 0;
 				padding: 4px 8px;
 				border: 2px solid rgba(255, 255, 255, .9);
@@ -34,13 +33,12 @@
 	</head>
 
 	<body>
-		<div>
-			<button>connect</button>
-		</div>
+		<button>connect</button>
 		<script type="module">
 			import Monome from '../src/Monome.js';
 
 			const monome = new Monome();
+			window.monome = monome;
 			const grid = monome.createCanvasGrid({
 				activeColor: '#efefef',
 				inactiveColor: '#0f0f0f',
@@ -122,17 +120,17 @@
 			};
 
 			let started = false;
-			const start = e => {
+			let height = 8;
+			let width = 16;
+			const start = () => {
 				if (started) return;
 				started = true;
-				const HEIGHT = e.y;
-				const WIDTH = e.x;
 				const activekeys = {};
 
-				let state = new Array(HEIGHT);
-				for (let i = 0; i < HEIGHT; i++) {
-					state[i] = new Array(WIDTH);
-					for (let j = 0; j < WIDTH; j++) {
+				let state = new Array(height);
+				for (let i = 0; i < height; i++) {
+					state[i] = new Array(width);
+					for (let j = 0; j < width; j++) {
 						state[i][j] = Math.floor(Math.random() * 2);
 					}
 				}
@@ -142,7 +140,7 @@
 					Object.values(activekeys).forEach(({ x, y }) => {
 						state[y][x] = 1;
 					});
-					draw(state, WIDTH, HEIGHT);
+					draw(state, width, height);
 
 					setTimeout(lifecycle, 100);
 				};
@@ -168,9 +166,16 @@
 				monome.on('gridKeyUp', keyup);
 			};
 
-			monome.on('getGridSize', start);
+			monome.on('getGridSize', ({x, y}) => {
+				width = Math.max(x, 8);
+				height = Math.max(y, 8);
+				if (grid?.canvas) {
+					grid.canvas.style.aspectRatio = `${width} / ${height}`;
+				}
+			});
 
-			document.querySelector('div').prepend(grid.canvas);
+			document.body.prepend(grid.canvas);
+			document.addEventListener('DOMContentLoaded', start);
 		</script>
 	</body>
 </html>

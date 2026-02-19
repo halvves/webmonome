@@ -1,17 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<title>webmonome - basic</title>
 		<style>
+			body {
+				height: 100vh;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+			}
 			canvas {
-				height: 500px;
-				width: 500px;
-				max-width: 100%;
+				max-width: 90%;
+				max-height: 90%;
+				aspect-ratio: 2;
+			}
+			#ui {
+				position: absolute;
+				bottom: 16px;
+				right: 16px;
+				display: flex;
 			}
 		</style>
 	</head>
 	<body>
+		<div id="ui">
+			<button id="connect">connect</button>
+			<button id="all">all</button>
+			<button id="clear">clear</button>
+			<input id="intensity" type="range" min="0" max="15" value="15" />
+		</div>
 		<script type="module">
 			import Monome from '../src/Monome.js';
 			const monome = new Monome();
@@ -22,47 +41,43 @@
 			document.body.appendChild(grid.canvas);
 
 			// connect button (optional — adds hardware mirroring)
-			const btn = document.createElement('button');
-			btn.innerHTML = 'connect';
+			const btn = document.getElementById('connect');
 			btn.addEventListener('click', async () => {
 				await monome.connect();
 				monome.getGridSize();
 			});
-			document.body.appendChild(btn);
 
-			const all = document.createElement('button');
-			all.innerHTML = 'all';
+			const all = document.getElementById('all');
 			all.addEventListener('click', () => monome.gridLedAll(true));
-			document.body.appendChild(all);
 
-			const clear = document.createElement('button');
-			clear.innerHTML = 'clear';
+			const clear = document.getElementById('clear');
 			clear.addEventListener('click', () => monome.gridLedAll(false));
-			document.body.appendChild(clear);
 
-			const intensity = document.createElement('input');
-			intensity.type = 'range';
-			intensity.min = 0;
-			intensity.max = 15;
-			intensity.value = 15;
+			const intensity = document.getElementById('intensity');
 			intensity.addEventListener('input', () => {
 				monome.gridLedIntensity(parseInt(intensity.value));
 			});
-			document.body.appendChild(intensity);
 
-			// toggle LEDs on key press
+			// leds light up on keydown
 			monome.on('gridKeyDown', ({ x, y }) => {
 				monome.gridLed(x, y, true);
 			});
 
+			// leds turn off on keyup
 			monome.on('gridKeyUp', ({ x, y }) => {
 				monome.gridLed(x, y, false);
 			});
 
+			monome.on('getGridSize', ({ x, y }) => {
+				if (grid?.canvas) {
+					grid.canvas.style.aspectRatio = `${x} / ${y}`;
+				}
+			});
+
 			// log system events
-			monome.on('getGridSize', data => console.log('grid size:', data));
-			monome.on('query', data => console.log('query:', data));
-			monome.on('getId', data => console.log('id:', data));
+			monome.on('getGridSize', (data) => console.log('grid size:', data));
+			monome.on('query', (data) => console.log('query:', data));
+			monome.on('getId', (data) => console.log('id:', data));
 		</script>
 	</body>
 </html>

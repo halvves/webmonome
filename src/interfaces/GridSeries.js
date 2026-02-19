@@ -114,9 +114,15 @@ export class GridSeries extends DeviceBase {
 			this.write([mode | (y & 0x0f), packLineData(state)]);
 		};
 
-		// eslint-disable-next-line no-unused-vars
 		const gridLedMap = (x, y, state) => {
-			log('gridLedMap is not yet implemented for series devices', 1);
+			const quadrant = Math.floor(x / 8) + Math.floor(y / 8) * 2;
+			const data = [0, 0, 0, 0, 0, 0, 0, 0];
+			for (let i = 0; i < Math.min(64, state.length); i++) {
+				const byteIndex = Math.floor(i / 8);
+				const bitIndex = i % 8;
+				data[byteIndex] = data[byteIndex] | (clamp(state[i], 0, 1) << bitIndex);
+			}
+			this.write([PROTO_SERIES_LED_FRAME | (quadrant & 0x03), ...data]);
 		};
 
 		const gridLedIntensity = (intensity) => {

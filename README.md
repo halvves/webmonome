@@ -2,7 +2,7 @@
 
 |   |   |
 |---|---|
-| npm | [0.0.1-alpha.8](https://www.npmjs.com/package/webmonome) |
+| npm | [0.0.1](https://www.npmjs.com/package/webmonome) |
 | size | [7kb minzipped](./scripts/sizecheck.js) |
 | dependencies | [zero](./package.json) |
 | license | [MIT](./LICENSE) |
@@ -78,7 +78,7 @@ monome.on('gridKeyUp', keyup);
 launchctl unload /Library/LaunchAgents/org.monome.serialosc.plist
  ```
 
-To re-enable:
+to re-enable:
 
 ```
 launchctl load /Library/LaunchAgents/org.monome.serialosc.plist
