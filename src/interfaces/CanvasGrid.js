@@ -14,6 +14,9 @@ import {
 	GRID_LED_LEVEL_MAP,
 } from '../events.js';
 
+/**
+ * @param {boolean | number} value
+ */
 function valueToLevel(value) {
 	if (typeof value === 'boolean') {
 		return value ? 15 : 0;
@@ -22,25 +25,51 @@ function valueToLevel(value) {
 	return Math.max(0, Math.min(15, value));
 }
 
+/**
+ * @typedef {Object} CanvasGridConfig
+ * @property {number} [width]
+ * @property {number} [height]
+ * @property {string} [activeColor]
+ * @property {string} [inactiveColor]
+ * @property {string} [borderColor]
+ * @property {(canvas: CanvasGrid) => void} [onDispose]
+ */
+
 export class CanvasGrid {
+	canvas;
+	#abort = new AbortController();
+	/** @type {import('../Monome.js').Monome | null} */
 	#m;
+	/** @type {(canvas: CanvasGrid) => void} */
+	#onDispose;
+	/** @type {CanvasRenderingContext2D | null} */
 	#ctx;
+	/** @type {Map<string, number>} */
 	#cache = new Map();
+	/** @type {ResizeObserver | undefined} */
+	#resizeObserver;
+
 	#gridWidth = 16;
 	#gridHeight = 8;
-	#pressed = false;
-	#prev = {};
-	#abort = new AbortController();
-	#resizeObserver;
 
 	#activeColor = '#003dda';
 	#inactiveColor = '#fff';
 	#borderColor = '#000';
 
-	canvas;
+	#pressed = false;
+	/** @type {{x?: number, y?: number}} */
+	#prev = {};
 
-	constructor(m, { width, height, activeColor, inactiveColor, borderColor }) {
+	/**
+	 * @param {import('../Monome.js').Monome} m
+	 * @param {CanvasGridConfig} config
+	 */
+	constructor(
+		m,
+		{ width, height, activeColor, inactiveColor, borderColor, onDispose }
+	) {
 		this.#m = m;
+		this.#onDispose = onDispose ?? (() => {});
 		this.#gridWidth = width || this.#gridWidth;
 		this.#gridHeight = height || this.#gridHeight;
 		this.#activeColor = activeColor || this.#activeColor;
@@ -294,97 +323,58 @@ export class CanvasGrid {
 	#bindMonomeEvents() {
 		const m = this.#m;
 		const opts = { signal: this.#abort.signal };
+		/** @type {(name: string, fn: (e: CustomEvent) => void) => void} */
+		const listen = (name, fn) => m.addEventListener(name, fn, opts);
 
-		m.addEventListener(
-			GRID_LED,
-			({ detail: { x, y, on } }) => {
-				this.#square(x, y, on);
-			},
-			opts
-		);
+		listen(GRID_LED, ({ detail: { x, y, on } }) => {
+			this.#square(x, y, on);
+		});
 
-		m.addEventListener(
-			GRID_LED_ALL,
-			({ detail: { on } }) => {
-				this.#all(on);
-			},
-			opts
-		);
+		listen(GRID_LED_ALL, ({ detail: { on } }) => {
+			this.#all(on);
+		});
 
-		m.addEventListener(
-			GRID_LED_COL,
-			({ detail: { x, y, state } }) => {
-				this.#col(x, y, state);
-			},
-			opts
-		);
+		listen(GRID_LED_COL, ({ detail: { x, y, state } }) => {
+			this.#col(x, y, state);
+		});
 
-		m.addEventListener(
-			GRID_LED_ROW,
-			({ detail: { x, y, state } }) => {
-				this.#row(x, y, state);
-			},
-			opts
-		);
+		listen(GRID_LED_ROW, ({ detail: { x, y, state } }) => {
+			this.#row(x, y, state);
+		});
 
-		m.addEventListener(
-			GRID_LED_MAP,
-			({ detail: { x, y, state } }) => {
-				this.#map(x, y, state);
-			},
-			opts
-		);
+		listen(GRID_LED_MAP, ({ detail: { x, y, state } }) => {
+			this.#map(x, y, state);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL,
-			({ detail: { x, y, level } }) => {
-				this.#square(x, y, level);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL, ({ detail: { x, y, level } }) => {
+			this.#square(x, y, level);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_ALL,
-			({ detail: { level } }) => {
-				this.#all(level, true);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_ALL, ({ detail: { level } }) => {
+			this.#all(level, true);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_COL,
-			({ detail: { x, y, state } }) => {
-				this.#col(x, y, state, true);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_COL, ({ detail: { x, y, state } }) => {
+			this.#col(x, y, state, true);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_ROW,
-			({ detail: { x, y, state } }) => {
-				this.#row(x, y, state, true);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_ROW, ({ detail: { x, y, state } }) => {
+			this.#row(x, y, state, true);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_MAP,
-			({ detail: { x, y, state } }) => {
-				this.#map(x, y, state, true);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_MAP, ({ detail: { x, y, state } }) => {
+			this.#map(x, y, state, true);
+		});
 
-		m.addEventListener(
-			GET_GRID_SIZE,
-			({ detail: { x, y } }) => {
-				this.#updateDimensions(x, y);
-				this.#redrawFromCache();
-			},
-			opts
-		);
+		listen(GET_GRID_SIZE, ({ detail: { x, y } }) => {
+			this.#updateDimensions(x, y);
+			this.#redrawFromCache();
+		});
 	}
 
+	/**
+	 * @param {{ activeColor?: string, inactiveColor?: string, borderColor?: string }} theme
+	 */
 	updateTheme({ activeColor, inactiveColor, borderColor }) {
 		if (activeColor) this.#activeColor = activeColor;
 		if (inactiveColor) this.#inactiveColor = inactiveColor;
@@ -400,7 +390,7 @@ export class CanvasGrid {
 			this.canvas.parentNode.removeChild(this.canvas);
 		}
 
-		this.#m.__removeCanvas(this);
+		this.#onDispose(this);
 		this.#m = null;
 		this.#cache.clear();
 	}

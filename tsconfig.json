@@ -1,0 +1,13 @@
+{
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"noEmit": true,
+		"lib": ["ES2020", "DOM"],
+		"types": ["w3c-web-usb"],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"target": "ES2020"
+	},
+	"include": ["src"]
+}

@@ -10,7 +10,19 @@ import { ERROR } from '../events.js';
 
 export class DeviceBase {
 	abort = new AbortController();
+	/** @type {USBDevice | null} */
+	device;
+	/** @type {import('../Monome.js').Monome} */
+	m;
+	/** @type {number} */
+	endpointIn;
+	/** @type {number} */
+	endpointOut;
 
+	/**
+	 * @param {USBDevice} device
+	 * @param {import('../Monome.js').Monome} m
+	 */
 	constructor(device, m) {
 		this.device = device;
 		this.m = m;
@@ -40,6 +52,9 @@ export class DeviceBase {
 		}
 	}
 
+	/**
+	 * @param {number[]} data
+	 */
 	async write(data) {
 		const buffer = new Uint8Array(data);
 		const result = await this.device.transferOut(this.endpointOut, buffer);
@@ -48,7 +63,11 @@ export class DeviceBase {
 		return result;
 	}
 
-	processData() {
+	/**
+	 * @param {DataView} data
+	 */
+	// eslint-disable-next-line no-unused-vars
+	processData(data) {
 		log('processData not implemented for this device', 1);
 	}
 

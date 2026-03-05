@@ -68,184 +68,151 @@ const CMD_LED_LEVEL_COLUMN = 0xc;
 const CMD_KEY_UP = 0x0;
 const CMD_KEY_DOWN = 0x1;
 
+/**
+ * @param {number} addr
+ * @param {number} cmd
+ */
 const packHeader = (addr, cmd) => ((addr & 0xf) << 4) | (cmd & 0xf);
+
+/**
+ * @param {number} header
+ * @returns {[number, number]}
+ */
 const unpackHeader = (header) => [header >> 4, header & 0xf];
 
 /* eslint-enable no-unused-vars */
 
+/**
+ * @param {number[]} args
+ */
 const packBuffer = ([addr, cmd, ...data]) => [
 	packHeader(addr, cmd),
 	...(Array.isArray(data) ? data : []),
 ];
 
 export class GridMext extends DeviceBase {
+	/**
+	 * @param {USBDevice} device
+	 * @param {import('../Monome.js').Monome} m
+	 */
 	constructor(device, m) {
 		super(device, m);
-		this.bindEvents();
+		this.#bindEvents();
 	}
 
+	/**
+	 * @param {...number} args
+	 */
 	writeBuffer(...args) {
 		return this.write(packBuffer(args));
 	}
 
-	bindEvents() {
+	#bindEvents() {
 		const m = this.m;
 		const opts = { signal: this.abort.signal };
+		/** @type {(name: string, fn: (e: CustomEvent) => void) => void} */
+		const listen = (name, fn) => m.addEventListener(name, fn, opts);
 
-		m.addEventListener(
-			SEND_QUERY,
-			() => {
-				this.writeBuffer(ADDR_SYSTEM, SYS_QUERY);
-			},
-			opts
-		);
+		listen(SEND_QUERY, () => {
+			this.writeBuffer(ADDR_SYSTEM, SYS_QUERY);
+		});
 
-		m.addEventListener(
-			SEND_GET_ID,
-			() => {
-				this.writeBuffer(ADDR_SYSTEM, SYS_GET_ID);
-			},
-			opts
-		);
+		listen(SEND_GET_ID, () => {
+			this.writeBuffer(ADDR_SYSTEM, SYS_GET_ID);
+		});
 
-		m.addEventListener(
-			SEND_GET_GRID_SIZE,
-			() => {
-				this.writeBuffer(ADDR_SYSTEM, SYS_GET_GRID_SIZES);
-			},
-			opts
-		);
+		listen(SEND_GET_GRID_SIZE, () => {
+			this.writeBuffer(ADDR_SYSTEM, SYS_GET_GRID_SIZES);
+		});
 
-		m.addEventListener(
-			GRID_LED,
-			({ detail: { x, y, on } }) => {
-				this.writeBuffer(ADDR_LED_GRID, on ? CMD_LED_ON : CMD_LED_OFF, x, y);
-			},
-			opts
-		);
+		listen(GRID_LED, ({ detail: { x, y, on } }) => {
+			this.writeBuffer(ADDR_LED_GRID, on ? CMD_LED_ON : CMD_LED_OFF, x, y);
+		});
 
-		m.addEventListener(
-			GRID_LED_ALL,
-			({ detail: { on } }) => {
-				this.writeBuffer(ADDR_LED_GRID, on ? CMD_LED_ALL_ON : CMD_LED_ALL_OFF);
-			},
-			opts
-		);
+		listen(GRID_LED_ALL, ({ detail: { on } }) => {
+			this.writeBuffer(ADDR_LED_GRID, on ? CMD_LED_ALL_ON : CMD_LED_ALL_OFF);
+		});
 
-		m.addEventListener(
-			GRID_LED_COL,
-			({ detail: { x, y, state } }) => {
-				this.writeBuffer(
-					ADDR_LED_GRID,
-					CMD_LED_COLUMN,
-					x,
-					y,
-					packLineData(state)
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_COL, ({ detail: { x, y, state } }) => {
+			this.writeBuffer(
+				ADDR_LED_GRID,
+				CMD_LED_COLUMN,
+				x,
+				y,
+				packLineData(state)
+			);
+		});
 
-		m.addEventListener(
-			GRID_LED_ROW,
-			({ detail: { x, y, state } }) => {
-				this.writeBuffer(ADDR_LED_GRID, CMD_LED_ROW, x, y, packLineData(state));
-			},
-			opts
-		);
+		listen(GRID_LED_ROW, ({ detail: { x, y, state } }) => {
+			this.writeBuffer(ADDR_LED_GRID, CMD_LED_ROW, x, y, packLineData(state));
+		});
 
-		m.addEventListener(
-			GRID_LED_MAP,
-			({ detail: { x, y, state } }) => {
-				const data = [0, 0, 0, 0, 0, 0, 0, 0];
-				for (let i = 0; i < Math.min(64, state.length); i++) {
-					const byteIndex = Math.floor(i / 8);
-					const bitIndex = i % 8;
-					data[byteIndex] =
-						data[byteIndex] | (clamp(state[i], 0, 1) << bitIndex);
-				}
-				this.writeBuffer(ADDR_LED_GRID, CMD_LED_MAP, x, y, ...data);
-			},
-			opts
-		);
+		listen(GRID_LED_MAP, ({ detail: { x, y, state } }) => {
+			const data = [0, 0, 0, 0, 0, 0, 0, 0];
+			for (let i = 0; i < Math.min(64, state.length); i++) {
+				const byteIndex = Math.floor(i / 8);
+				const bitIndex = i % 8;
+				data[byteIndex] = data[byteIndex] | (clamp(state[i], 0, 1) << bitIndex);
+			}
+			this.writeBuffer(ADDR_LED_GRID, CMD_LED_MAP, x, y, ...data);
+		});
 
-		m.addEventListener(
-			GRID_LED_INTENSITY,
-			({ detail: { intensity } }) => {
-				this.writeBuffer(
-					ADDR_LED_GRID,
-					CMD_LED_INTENSITY,
-					clamp(intensity, 0, 15)
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_INTENSITY, ({ detail: { intensity } }) => {
+			this.writeBuffer(
+				ADDR_LED_GRID,
+				CMD_LED_INTENSITY,
+				clamp(intensity, 0, 15)
+			);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL,
-			({ detail: { x, y, level } }) => {
-				this.writeBuffer(
-					ADDR_LED_GRID,
-					CMD_LED_LEVEL_SET,
-					x,
-					y,
-					clamp(level, 0, 15)
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL, ({ detail: { x, y, level } }) => {
+			this.writeBuffer(
+				ADDR_LED_GRID,
+				CMD_LED_LEVEL_SET,
+				x,
+				y,
+				clamp(level, 0, 15)
+			);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_ALL,
-			({ detail: { level } }) => {
-				this.writeBuffer(ADDR_LED_GRID, CMD_LED_LEVEL_ALL, clamp(level, 0, 15));
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_ALL, ({ detail: { level } }) => {
+			this.writeBuffer(ADDR_LED_GRID, CMD_LED_LEVEL_ALL, clamp(level, 0, 15));
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_COL,
-			({ detail: { x, y, state } }) => {
-				this.writeBuffer(
-					ADDR_LED_GRID,
-					CMD_LED_LEVEL_COLUMN,
-					x,
-					y,
-					...packIntensityData(state, 8)
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_COL, ({ detail: { x, y, state } }) => {
+			this.writeBuffer(
+				ADDR_LED_GRID,
+				CMD_LED_LEVEL_COLUMN,
+				x,
+				y,
+				...packIntensityData(state, 8)
+			);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_ROW,
-			({ detail: { x, y, state } }) => {
-				this.writeBuffer(
-					ADDR_LED_GRID,
-					CMD_LED_LEVEL_ROW,
-					x,
-					y,
-					...packIntensityData(state, 8)
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_ROW, ({ detail: { x, y, state } }) => {
+			this.writeBuffer(
+				ADDR_LED_GRID,
+				CMD_LED_LEVEL_ROW,
+				x,
+				y,
+				...packIntensityData(state, 8)
+			);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_MAP,
-			({ detail: { x, y, state } }) => {
-				this.writeBuffer(
-					ADDR_LED_GRID,
-					CMD_LED_LEVEL_MAP,
-					x,
-					y,
-					...packIntensityData(state, 64)
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_MAP, ({ detail: { x, y, state } }) => {
+			this.writeBuffer(
+				ADDR_LED_GRID,
+				CMD_LED_LEVEL_MAP,
+				x,
+				y,
+				...packIntensityData(state, 64)
+			);
+		});
 	}
 
+	/**
+	 * @param {DataView} data
+	 */
 	processData(data) {
 		let start = 0;
 		while (data.byteLength > start + 1) {

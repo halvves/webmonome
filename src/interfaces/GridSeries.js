@@ -51,44 +51,38 @@ const SERIES_GRID_SIZES = {
 };
 
 export class GridSeries extends DeviceBase {
+	/**
+	 * @param {USBDevice} device
+	 * @param {import('../Monome.js').Monome} m
+	 */
 	constructor(device, m) {
 		super(device, m);
-		this.bindEvents();
+		this.#bindEvents();
 	}
 
-	bindEvents() {
+	#bindEvents() {
 		const m = this.m;
 		const opts = { signal: this.abort.signal };
+		/** @type {(name: string, fn: (e: CustomEvent) => void) => void} */
+		const listen = (name, fn) => m.addEventListener(name, fn, opts);
 
-		m.addEventListener(
-			SEND_QUERY,
-			() => {
-				log('query is not supported on series devices', 1);
-			},
-			opts
-		);
+		listen(SEND_QUERY, () => {
+			log('query is not supported on series devices', 1);
+		});
 
-		m.addEventListener(
-			SEND_GET_ID,
-			() => {
-				log('getId is not supported on series devices', 1);
-			},
-			opts
-		);
+		listen(SEND_GET_ID, () => {
+			log('getId is not supported on series devices', 1);
+		});
 
-		m.addEventListener(
-			SEND_GET_GRID_SIZE,
-			() => {
-				const match = this.device.serialNumber.match(/^m(64|128|256)/);
-				if (!match) {
-					log('could not determine series grid size from serial number', 1);
-					return;
-				}
-				const size = SERIES_GRID_SIZES[match[1]];
-				m.emit(GET_GRID_SIZE, size);
-			},
-			opts
-		);
+		listen(SEND_GET_GRID_SIZE, () => {
+			const match = this.device.serialNumber.match(/^m(64|128|256)/);
+			if (!match) {
+				log('could not determine series grid size from serial number', 1);
+				return;
+			}
+			const size = SERIES_GRID_SIZES[match[1]];
+			m.emit(GET_GRID_SIZE, size);
+		});
 
 		// reusable led calls for sharing with normal and degradation paths
 		const gridLed = (x, y, on) => {
@@ -129,116 +123,75 @@ export class GridSeries extends DeviceBase {
 			this.write([PROTO_SERIES_INTENSITY | (clamp(intensity, 0, 15) & 0x0f)]);
 		};
 
-		m.addEventListener(
-			GRID_LED,
-			({ detail: { x, y, on } }) => {
-				gridLed(x, y, on);
-			},
-			opts
-		);
+		listen(GRID_LED, ({ detail: { x, y, on } }) => {
+			gridLed(x, y, on);
+		});
 
-		m.addEventListener(
-			GRID_LED_ALL,
-			({ detail: { on } }) => {
-				gridLedAll(on);
-			},
-			opts
-		);
+		listen(GRID_LED_ALL, ({ detail: { on } }) => {
+			gridLedAll(on);
+		});
 
 		// y offset is seemingly ignored in the serial protocol?
 		// see: https://github.com/monome/libmonome/blob/cd11b2fde61b7ecd1c171cf9f8568918b0199df9/src/proto/series.c#L184
-		m.addEventListener(
-			GRID_LED_COL,
-			({ detail: { x, y, state } }) => {
-				gridLedCol(x, y, state);
-			},
-			opts
-		);
+		listen(GRID_LED_COL, ({ detail: { x, y, state } }) => {
+			gridLedCol(x, y, state);
+		});
 
 		// x offset is seemingly ignored in the serial protocol?
 		// see: https://github.com/monome/libmonome/blob/cd11b2fde61b7ecd1c171cf9f8568918b0199df9/src/proto/series.c#L209
-		m.addEventListener(
-			GRID_LED_ROW,
-			({ detail: { x, y, state } }) => {
-				gridLedRow(x, y, state);
-			},
-			opts
-		);
+		listen(GRID_LED_ROW, ({ detail: { x, y, state } }) => {
+			gridLedRow(x, y, state);
+		});
 
-		m.addEventListener(
-			GRID_LED_MAP,
-			({ detail: { x, y, state } }) => {
-				gridLedMap(x, y, state);
-			},
-			opts
-		);
+		listen(GRID_LED_MAP, ({ detail: { x, y, state } }) => {
+			gridLedMap(x, y, state);
+		});
 
-		m.addEventListener(
-			GRID_LED_INTENSITY,
-			({ detail: { intensity } }) => {
-				gridLedIntensity(intensity);
-			},
-			opts
-		);
+		listen(GRID_LED_INTENSITY, ({ detail: { intensity } }) => {
+			gridLedIntensity(intensity);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL,
-			({ detail: { x, y, level } }) => {
-				log('series does not support LED levels, degrading to on/off', 1);
-				gridLed(x, y, level > 7);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL, ({ detail: { x, y, level } }) => {
+			log('series does not support LED levels, degrading to on/off', 1);
+			gridLed(x, y, level > 7);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_ALL,
-			({ detail: { level } }) => {
-				log('series does not support LED levels, degrading to intensity', 1);
-				gridLedIntensity(level);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_ALL, ({ detail: { level } }) => {
+			log('series does not support LED levels, degrading to intensity', 1);
+			gridLedIntensity(level);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_COL,
-			({ detail: { x, y, state } }) => {
-				log('series does not support LED levels, degrading to on/off', 1);
-				gridLedCol(
-					x,
-					y,
-					state.map((l) => (l > 7 ? 1 : 0))
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_COL, ({ detail: { x, y, state } }) => {
+			log('series does not support LED levels, degrading to on/off', 1);
+			gridLedCol(
+				x,
+				y,
+				state.map((l) => (l > 7 ? 1 : 0))
+			);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_ROW,
-			({ detail: { x, y, state } }) => {
-				log('series does not support LED levels, degrading to on/off', 1);
-				gridLedRow(
-					x,
-					y,
-					state.map((l) => (l > 7 ? 1 : 0))
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_ROW, ({ detail: { x, y, state } }) => {
+			log('series does not support LED levels, degrading to on/off', 1);
+			gridLedRow(
+				x,
+				y,
+				state.map((l) => (l > 7 ? 1 : 0))
+			);
+		});
 
-		m.addEventListener(
-			GRID_LED_LEVEL_MAP,
-			({ detail: { x, y, state } }) => {
-				log('series does not support LED levels, degrading to on/off', 1);
-				gridLedMap(
-					x,
-					y,
-					state.map((l) => (l > 7 ? 1 : 0))
-				);
-			},
-			opts
-		);
+		listen(GRID_LED_LEVEL_MAP, ({ detail: { x, y, state } }) => {
+			log('series does not support LED levels, degrading to on/off', 1);
+			gridLedMap(
+				x,
+				y,
+				state.map((l) => (l > 7 ? 1 : 0))
+			);
+		});
 	}
 
+	/**
+	 * @param {DataView} data
+	 */
 	processData(data) {
 		let start = 0;
 		while (data.byteLength > start + 1) {

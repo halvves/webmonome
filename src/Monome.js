@@ -30,25 +30,42 @@ import {
 	SEND_QUERY,
 } from './events.js';
 
+/**
+ * @typedef {Object} MonomeEventMap
+ * @property {{x: number, y: number}} gridKeyDown
+ * @property {{x: number, y: number}} gridKeyUp
+ * @property {{type: number, count: number}} query
+ * @property {string} getId
+ * @property {{x: number, y: number}} getGridSize
+ * @property {{error: Error}} error
+ */
+
 const hasUsb =
 	typeof window !== 'undefined' && 'navigator' in window && 'usb' in navigator;
 
 class Monome extends EventTarget {
-	#bridge = null;
-	#canvases = new Set();
-	#size = { x: 16, y: 8 };
 	#abort = new AbortController();
+	/** @type {import('./interfaces/DeviceBase.js').DeviceBase | null} */
+	#bridge = null;
+	/** @type {Set<import('./interfaces/CanvasGrid.js').CanvasGrid>} */
+	#canvases = new Set();
+	/** @type {Array<{name: string, fn: (detail: any) => void, wrapper: EventListener}>} */
 	#listeners = []; // used to track listeners for event sugar
+	#size = { x: 16, y: 8 };
 
-	constructor() {
-		super();
-	}
-
+	/**
+	 * @returns {{x: number, y: number}}
+	 */
 	get size() {
 		return { ...this.#size };
 	}
 
-	// overload addEventListener to apply abort signal for easy cleanup
+	// wrap addEventListener to apply abort signal for easy cleanup
+	/**
+	 * @param {string} name
+	 * @param {EventListenerOrEventListenerObject} fn
+	 * @param {AddEventListenerOptions} [options]
+	 */
 	addEventListener(name, fn, options = {}) {
 		super.addEventListener(name, fn, {
 			signal: this.#abort.signal,
@@ -57,6 +74,12 @@ class Monome extends EventTarget {
 	}
 
 	// event sugar
+	/**
+	 * @template {keyof MonomeEventMap} K
+	 * @param {K} name
+	 * @param {(detail: MonomeEventMap[K]) => void} fn
+	 * @returns {this}
+	 */
 	on(name, fn) {
 		const wrapper = (e) => fn(e.detail);
 		this.#listeners.push({ name, fn, wrapper });
@@ -64,8 +87,13 @@ class Monome extends EventTarget {
 		return this;
 	}
 
+	/**
+	 * @param {string} [name]
+	 * @param {(detail: any) => void} [fn]
+	 * @returns {this}
+	 */
 	off(name, fn) {
-		if (arguments.length === 0) {
+		if (!name) {
 			// remove all listeners
 			this.#listeners.forEach(({ name, wrapper }) => {
 				this.removeEventListener(name, wrapper);
@@ -97,6 +125,10 @@ class Monome extends EventTarget {
 		return this;
 	}
 
+	/**
+	 * @returns {Promise<void>}
+	 * @throws {Error} if the user cancels the device request or if there is an error during connection
+	 */
 	async connect() {
 		if (!hasUsb) {
 			log(WARN_NO_USB, 1);
@@ -135,6 +167,9 @@ class Monome extends EventTarget {
 		}
 	}
 
+	/**
+	 * @returns {Promise<void>}
+	 */
 	async disconnect() {
 		if (this.#bridge) {
 			await this.#bridge.dispose();
@@ -142,17 +177,24 @@ class Monome extends EventTarget {
 		}
 	}
 
+	/**
+	 * @param {Omit<import('./interfaces/CanvasGrid.js').CanvasGridConfig, 'onDispose'>} [config]
+	 * @returns {import('./interfaces/CanvasGrid.js').CanvasGrid}
+	 */
 	createCanvasGrid(config = {}) {
-		const v = new CanvasGrid(this, config);
+		const v = new CanvasGrid(this, {
+			...config,
+			onDispose: (c) => this.#canvases.delete(c),
+		});
 		this.#canvases.add(v);
 		return v;
 	}
 
-	/** @internal — called by CanvasGrid.dispose() */
-	__removeCanvas(v) {
-		this.#canvases.delete(v);
-	}
-
+	/**
+	 * @param {string} eventName
+	 * @param {any} [payload]
+	 * @returns {CustomEvent}
+	 */
 	emit(eventName, payload) {
 		if (!this.#bridge && this.#canvases.size === 0) {
 			log(WARN_NOT_CONNECTED, 1);
@@ -181,56 +223,108 @@ class Monome extends EventTarget {
 		this.emit(SEND_GET_GRID_SIZE);
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {boolean | number} on
+	 */
 	gridLed(x, y, on) {
 		this.emit(GRID_LED, { x, y, on });
 	}
 
+	/**
+	 * @param {boolean | number} on
+	 */
 	gridLedAll(on) {
 		this.emit(GRID_LED_ALL, { on });
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[]} state
+	 */
 	gridLedCol(x, y, state) {
 		if (!Array.isArray(state)) return;
 		this.emit(GRID_LED_COL, { x, y, state });
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[]} state
+	 */
 	gridLedRow(x, y, state) {
 		if (!Array.isArray(state)) return;
 		this.emit(GRID_LED_ROW, { x, y, state });
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[]} state
+	 */
 	gridLedMap(x, y, state) {
 		if (!Array.isArray(state)) return;
 		this.emit(GRID_LED_MAP, { x, y, state });
 	}
 
+	/**
+	 * @param {number} intensity - 0-15
+	 */
 	gridLedIntensity(intensity) {
 		this.emit(GRID_LED_INTENSITY, { intensity });
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number} level - 0-15
+	 */
 	gridLedLevel(x, y, level) {
 		this.emit(GRID_LED_LEVEL, { x, y, level });
 	}
 
+	/**
+	 * @param {number} level - 0-15
+	 */
 	gridLedLevelAll(level) {
 		this.emit(GRID_LED_LEVEL_ALL, { level });
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[]} state - 0-15 values
+	 */
 	gridLedLevelCol(x, y, state) {
 		if (!Array.isArray(state)) return;
 		this.emit(GRID_LED_LEVEL_COL, { x, y, state });
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[]} state - 0-15 values
+	 */
 	gridLedLevelRow(x, y, state) {
 		if (!Array.isArray(state)) return;
 		this.emit(GRID_LED_LEVEL_ROW, { x, y, state });
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[]} state - 0-15 values
+	 */
 	gridLedLevelMap(x, y, state) {
 		if (!Array.isArray(state)) return;
 		this.emit(GRID_LED_LEVEL_MAP, { x, y, state });
 	}
 
+	/**
+	 * @returns {Promise<void>}
+	 */
 	async dispose() {
 		await this.disconnect();
 		this.#canvases.forEach((v) => v.dispose());

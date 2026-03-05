@@ -13,17 +13,40 @@ export const USB_XFER_STATUS_BABBLE = 'babble';
 export const DEVICE_TYPE_MEXT = 0;
 export const DEVICE_TYPE_SERIES = 1;
 
-// logging
-export const log = (msg, level = 0) =>
+/**
+ * @param {unknown} msg - the message to log
+ * @param {0 | 1 | 2} [level] - the log level (0 = log, 1 = warn, 2 = error)
+ * @example
+ * log('this is a log message');
+ * log('this is a warning message', 1);
+ * log('this is an error message', 2);
+ */
+export function log(msg, level = 0) {
 	console[['log', 'warn', 'error'][level]](MSG_PREFIX + msg);
-export const err = (msg) => {
-	throw new Error(MSG_PREFIX + msg);
-};
+}
 
-// device detection
+/**
+ * @param {string} msg - the error message
+ * @returns {never}
+ * @example
+ * err('this is an error message'); // throws an error with the message
+ */
+export function err(msg) {
+	throw new Error(MSG_PREFIX + msg);
+}
+
+/******************
+ * DEVICE DETECTION
+ ******************/
 const REGEX_SERIES = /^m(64|128|256)/;
 const REGEX_KIT = /^mk/;
 const REGEX_MEXT = /^[Mm]\d+/;
+
+/**
+ * determines the type of a device based on its serial number.
+ * @param {USBDevice} device
+ * @returns {0 | 1} the device type
+ */
 export const deviceType = (device) => {
 	if (
 		REGEX_SERIES.test(device.serialNumber) ||
@@ -37,7 +60,9 @@ export const deviceType = (device) => {
 	}
 };
 
-// interface mapping
+/*******************
+ * INTERFACE MAPPING
+ *******************/
 export const VENDOR_ID_GENESIS = 0x0403;
 export const VENDOR_ID_2021 = 0x0483;
 
@@ -50,14 +75,24 @@ const interfaceMap = {
 	[VENDOR_ID_2021]: 1,
 };
 
+/**
+ * @param {number} vendorId
+ */
 export const getInterfaceForVendor = (vendorId) => interfaceMap[vendorId] || 0;
 
 // endpoints (get i/o based on chosen interface endpoints)
+/**
+ * @param {USBDevice} device
+ */
 const getEndpointsForDevice = (device) => {
 	return device.configuration.interfaces[getInterfaceForVendor(device.vendorId)]
 		.alternates[0].endpoints;
 };
 
+/**
+ * @param {USBDevice} device
+ * @param {'in' | 'out'} dir
+ */
 export const getEndpoint = (device, dir) => {
 	const defaults = { in: 1, out: 2 };
 	let endpoint;
@@ -70,10 +105,28 @@ export const getEndpoint = (device, dir) => {
 	return endpoint ? endpoint.endpointNumber : defaults[dir];
 };
 
-// math
+/*******************
+ * MATH UTILS
+ *******************/
+/**
+ * clamps a value between a minimum and maximum.
+ * @param {number} val - the value to clamp
+ * @param {number} min - the minimum value
+ * @param {number} max - the maximum value
+ * @example
+ * clamp(5, 0, 10); // returns 5
+ * clamp(-5, 0, 10); // returns 0
+ * clamp(15, 0, 10); // returns 10
+ */
 export const clamp = (val, min, max) => Math.max(Math.min(val, max), min);
 
-// bit ops
+/*******************
+ * BIT OPS
+ *******************/
+/**
+ * packs an array of binary (0/1) values into a single byte.
+ * @param {number[]} state - array of 0/1 values (up to 8)
+ */
 export const packLineData = (state) => {
 	let data = 0;
 	for (let i = 0; i < Math.min(8, state.length); i++) {
@@ -82,6 +135,11 @@ export const packLineData = (state) => {
 	return data;
 };
 
+/**
+ * packs an array of intensity values (0-15) into packed nybble data.
+ * @param {number[]} state - array of 0-15 values
+ * @param {number} length - number of values to pack
+ */
 export const packIntensityData = (state, length) => {
 	const data = [];
 	for (let i = 0; i < Math.ceil(length / 2); i++) {
