@@ -14,6 +14,8 @@ import {
 	GRID_LED_LEVEL_MAP,
 } from '../events.js';
 
+const MOUSE = 'mouse';
+
 /**
  * @param {boolean | number} value
  */
@@ -56,9 +58,13 @@ export class CanvasGrid {
 	#inactiveColor = '#fff';
 	#borderColor = '#000';
 
-	#pressed = false;
-	/** @type {{x?: number, y?: number}} */
-	#prev = {};
+	/** @type {Map<string | number, {x: number, y: number} | null>} */
+	#contacts = new Map();
+	/** @type {Map<string, number>} */
+	#contactsPerKey = new Map();
+	/** @type {DOMRect | null} */
+	#rect = null;
+	#squareSize = 0;
 
 	/**
 	 * @param {import('../Monome.js').Monome} m
@@ -77,6 +83,8 @@ export class CanvasGrid {
 		this.#borderColor = borderColor || this.#borderColor;
 
 		this.canvas = document.createElement('canvas');
+		this.canvas.style.touchAction = 'none';
+		this.canvas.style.userSelect = 'none';
 		this.#ctx = this.canvas.getContext('2d');
 		this.#ctx.lineWidth = 0;
 
@@ -87,6 +95,7 @@ export class CanvasGrid {
 		this.#resizeObserver = new ResizeObserver(() => {
 			this.#updateDimensions(this.#gridWidth, this.#gridHeight);
 			this.#redrawFromCache();
+			this.#rect = null;
 		});
 		this.#resizeObserver.observe(this.canvas);
 	}
@@ -193,131 +202,122 @@ export class CanvasGrid {
 		}
 	}
 
+	#refreshGeometry() {
+		this.#rect = this.canvas.getBoundingClientRect();
+		const scale = window.devicePixelRatio;
+		const sw = this.canvas.width / scale / this.#gridWidth;
+		const sh = this.canvas.height / scale / this.#gridHeight;
+		this.#squareSize = Math.min(sw, sh);
+	}
+
+	#getSquareFromClient(cx, cy) {
+		if (!this.#rect) this.#refreshGeometry();
+		const x = Math.floor((cx - this.#rect.left) / this.#squareSize);
+		const y = Math.floor((cy - this.#rect.top) / this.#squareSize);
+		if (x < 0 || y < 0 || x >= this.#gridWidth || y >= this.#gridHeight) {
+			return null;
+		}
+		return { x, y };
+	}
+
+	#enterKey(pos) {
+		const key = `${pos.x}_${pos.y}`;
+		const count = (this.#contactsPerKey.get(key) ?? 0) + 1;
+		this.#contactsPerKey.set(key, count);
+		// adding more contacts doesn't re emit (modeling physical btns)
+		if (count === 1) this.#m.emit(GRID_KEY_DOWN, pos);
+	}
+
+	#leaveKey(pos) {
+		const key = `${pos.x}_${pos.y}`;
+		const count = (this.#contactsPerKey.get(key) ?? 0) - 1;
+		// only emit key up when all contacts have left the pad (again modeling physical btns)
+		if (count <= 0) {
+			this.#contactsPerKey.delete(key);
+			this.#m.emit(GRID_KEY_UP, pos);
+		} else {
+			this.#contactsPerKey.set(key, count);
+		}
+	}
+
+	#startContact(id, cx, cy) {
+		if (this.#contacts.has(id)) this.#endContact(id);
+		const pos = this.#getSquareFromClient(cx, cy);
+		this.#contacts.set(id, pos);
+		if (pos) this.#enterKey(pos);
+	}
+
+	#updateContact(id, cx, cy) {
+		if (!this.#contacts.has(id)) return;
+		const old = this.#contacts.get(id);
+		const updated = this.#getSquareFromClient(cx, cy);
+		if (old && updated && old.x === updated.x && old.y === updated.y) return;
+		if (!old && !updated) return;
+		if (old) this.#leaveKey(old);
+		if (updated) this.#enterKey(updated);
+		this.#contacts.set(id, updated);
+	}
+
+	#endContact(id) {
+		if (!this.#contacts.has(id)) return;
+		const old = this.#contacts.get(id);
+		if (old) this.#leaveKey(old);
+		this.#contacts.delete(id);
+	}
+
 	#bindCanvasEvents() {
-		const emit = (name, payload) => this.#m.emit(name, payload);
-		const opts = { signal: this.#abort.signal };
+		const opts = { signal: this.#abort.signal, passive: true };
 
-		function getSquareFromEvent(e) {
-			const scale = window.devicePixelRatio;
-			const squareWidth = this.canvas.width / scale / this.#gridWidth;
-			const squareHeight = this.canvas.height / scale / this.#gridHeight;
-			const minDim = Math.min(squareWidth, squareHeight);
+		const handleMouseDown = (e) => {
+			this.#refreshGeometry();
+			this.#startContact(MOUSE, e.clientX, e.clientY);
+		};
 
-			let x = -1;
-			let y = -1;
+		const handleMouseMove = (e) => {
+			this.#updateContact(MOUSE, e.clientX, e.clientY);
+		};
 
-			if (e.type.startsWith('mouse')) {
-				x = Math.floor(e.offsetX / minDim);
-				y = Math.floor(e.offsetY / minDim);
-			} else if (e.type.startsWith('touch')) {
-				const rect = this.canvas.getBoundingClientRect();
-				x = Math.floor((e.touches[0].clientX - rect.left) / minDim);
-				y = Math.floor((e.touches[0].clientY - rect.top) / minDim);
+		const handleMouseUp = () => {
+			this.#endContact(MOUSE);
+		};
+
+		// release key on mouseleave but keep mouse contact in the map (as null)
+		// so re-entering the canvas while still pressed resumes drag-draw
+		const handleMouseLeave = () => {
+			if (!this.#contacts.has(MOUSE)) return;
+			const old = this.#contacts.get(MOUSE);
+			if (old) this.#leaveKey(old);
+			this.#contacts.set(MOUSE, null);
+		};
+
+		const handleTouchStart = (e) => {
+			this.#refreshGeometry();
+			for (const t of e.changedTouches) {
+				this.#startContact(t.identifier, t.clientX, t.clientY);
 			}
+		};
 
-			if (x < 0 || y < 0 || x >= this.#gridWidth || y >= this.#gridHeight)
-				return;
-
-			return { x, y };
-		}
-
-		function releaseLastKey() {
-			if (
-				this.#prev &&
-				this.#prev.x !== undefined &&
-				this.#prev.y !== undefined
-			) {
-				emit(GRID_KEY_UP, this.#prev);
+		const handleTouchMove = (e) => {
+			for (const t of e.changedTouches) {
+				this.#updateContact(t.identifier, t.clientX, t.clientY);
 			}
-			this.#prev = {};
-		}
+		};
 
-		function handlePointerDown(e) {
-			e.preventDefault();
-			this.#pressed = true;
-			const p = getSquareFromEvent.bind(this)(e);
-			if (p) this.#m.emit(GRID_KEY_DOWN, p);
-			this.#prev = p || {};
-		}
-
-		function handlePointerUp(e) {
-			e.preventDefault();
-			this.#pressed = false;
-			releaseLastKey.bind(this)();
-		}
-
-		function handlePointerMove(e) {
-			e.preventDefault();
-			if (this.#pressed) {
-				const pos = getSquareFromEvent.bind(this)(e);
-				if (!pos) {
-					releaseLastKey.bind(this)();
-					return;
-				}
-
-				if (pos.x === this.#prev.x && pos.y === this.#prev.y) return;
-
-				if (this.#prev.x !== undefined && this.#prev.y !== undefined) {
-					emit(GRID_KEY_UP, this.#prev);
-				}
-				emit(GRID_KEY_DOWN, pos);
-				this.#prev = pos;
+		const handleTouchEnd = (e) => {
+			for (const t of e.changedTouches) {
+				this.#endContact(t.identifier);
 			}
-		}
+		};
 
-		this.canvas.addEventListener(
-			'mousedown',
-			handlePointerDown.bind(this),
-			opts
-		);
+		this.canvas.addEventListener('mousedown', handleMouseDown, opts);
+		this.canvas.addEventListener('mousemove', handleMouseMove, opts);
+		this.canvas.addEventListener('mouseleave', handleMouseLeave, opts);
+		window.addEventListener('mouseup', handleMouseUp, opts);
 
-		this.canvas.addEventListener('mouseup', handlePointerUp.bind(this), opts);
-
-		// finally set pressed to false on mouseup anywhere on window
-		window.addEventListener(
-			'mouseup',
-			() => {
-				this.#pressed = false;
-			},
-			opts
-		);
-
-		// release last key on mouse leave BUT keep pressed state until
-		// mouseup in case user comes back into canvas
-		this.canvas.addEventListener(
-			'mouseleave',
-			(e) => {
-				e.preventDefault();
-				releaseLastKey.bind(this)();
-			},
-			opts
-		);
-
-		this.canvas.addEventListener(
-			'mousemove',
-			handlePointerMove.bind(this),
-			opts
-		);
-
-		this.canvas.addEventListener(
-			'touchstart',
-			handlePointerDown.bind(this),
-			opts
-		);
-
-		this.canvas.addEventListener('touchend', handlePointerUp.bind(this), opts);
-
-		this.canvas.addEventListener(
-			'touchcancel',
-			handlePointerUp.bind(this),
-			opts
-		);
-
-		this.canvas.addEventListener(
-			'touchmove',
-			handlePointerMove.bind(this),
-			opts
-		);
+		this.canvas.addEventListener('touchstart', handleTouchStart, opts);
+		this.canvas.addEventListener('touchmove', handleTouchMove, opts);
+		this.canvas.addEventListener('touchend', handleTouchEnd, opts);
+		this.canvas.addEventListener('touchcancel', handleTouchEnd, opts);
 	}
 
 	#bindMonomeEvents() {
@@ -369,6 +369,7 @@ export class CanvasGrid {
 		listen(GET_GRID_SIZE, ({ detail: { x, y } }) => {
 			this.#updateDimensions(x, y);
 			this.#redrawFromCache();
+			this.#rect = null;
 		});
 	}
 
@@ -393,5 +394,7 @@ export class CanvasGrid {
 		this.#onDispose(this);
 		this.#m = null;
 		this.#cache.clear();
+		this.#contactsPerKey.clear();
+		this.#contacts.clear();
 	}
 }
