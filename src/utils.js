@@ -1,6 +1,7 @@
 const MSG_PREFIX = 'WebMonome: ';
 export const ERR_NOT_SUPPORTED = 'device type not yet supported';
 export const ERR_WRITE = 'write error';
+export const ERR_WRITE_NO_DEVICE = 'write error - no device';
 export const ERR_WRITE_MISSING_BYTES = 'write is missing bytes';
 export const WARN_NO_USB = 'this browser does not support WebUsb.';
 export const WARN_NOT_CONNECTED =
@@ -22,7 +23,10 @@ export const DEVICE_TYPE_SERIES = 1;
  * log('this is an error message', 2);
  */
 export function log(msg, level = 0) {
-	console[['log', 'warn', 'error'][level]](MSG_PREFIX + msg);
+	const text = MSG_PREFIX + msg;
+	if (level === 2) console.error(text);
+	else if (level === 1) console.warn(text);
+	else console.log(text);
 }
 
 /**
@@ -48,12 +52,11 @@ const REGEX_MEXT = /^[Mm]\d+/;
  * @returns {0 | 1} the device type
  */
 export const deviceType = (device) => {
-	if (
-		REGEX_SERIES.test(device.serialNumber) ||
-		REGEX_KIT.test(device.serialNumber)
-	) {
+	const serial = device.serialNumber;
+	if (!serial) err(ERR_NOT_SUPPORTED);
+	if (REGEX_SERIES.test(serial) || REGEX_KIT.test(serial)) {
 		return DEVICE_TYPE_SERIES;
-	} else if (REGEX_MEXT.test(device.serialNumber)) {
+	} else if (REGEX_MEXT.test(serial)) {
 		return DEVICE_TYPE_MEXT;
 	} else {
 		err(ERR_NOT_SUPPORTED);
@@ -70,6 +73,7 @@ export const VENDOR_ID_2021 = 0x0483;
 // a dynamic way to determine these (right now, i just
 // know from exp that 2021 devices have to claim interface
 // 1 instead of 0)
+/** @type {Record<number, number>} */
 const interfaceMap = {
 	[VENDOR_ID_GENESIS]: 0,
 	[VENDOR_ID_2021]: 1,
@@ -85,6 +89,7 @@ export const getInterfaceForVendor = (vendorId) => interfaceMap[vendorId] || 0;
  * @param {USBDevice} device
  */
 const getEndpointsForDevice = (device) => {
+	if (!device.configuration) err(ERR_NOT_SUPPORTED);
 	return device.configuration.interfaces[getInterfaceForVendor(device.vendorId)]
 		.alternates[0].endpoints;
 };

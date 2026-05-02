@@ -81,7 +81,8 @@ class Monome extends EventTarget {
 	 * @returns {this}
 	 */
 	on(name, fn) {
-		const wrapper = (e) => fn(e.detail);
+		/** @param {Event} e */
+		const wrapper = (e) => fn(/** @type {CustomEvent} */ (e).detail);
 		this.#listeners.push({ name, fn, wrapper });
 		this.addEventListener(name, wrapper);
 		return this;
@@ -135,7 +136,8 @@ class Monome extends EventTarget {
 			return;
 		}
 
-		let device;
+		/** @type {USBDevice | null} */
+		let device = null;
 		try {
 			device = await navigator.usb.requestDevice({
 				filters: [
@@ -154,7 +156,11 @@ class Monome extends EventTarget {
 				this.#bridge = new GridSeries(device, this);
 			}
 
-			this.#bridge.listen();
+			const bridge =
+				/** @type {import('./interfaces/DeviceBase.js').DeviceBase} */ (
+					this.#bridge
+				);
+			bridge.listen();
 
 			navigator.usb.addEventListener('disconnect', (e) => {
 				if (e.device === device) {
@@ -162,7 +168,9 @@ class Monome extends EventTarget {
 				}
 			});
 		} catch (e) {
-			device = null;
+			if (device?.opened) {
+				await device.close();
+			}
 			throw e;
 		}
 	}

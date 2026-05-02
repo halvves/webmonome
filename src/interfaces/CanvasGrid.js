@@ -86,7 +86,7 @@ export class CanvasGrid {
 		this.canvas.style.touchAction = 'none';
 		this.canvas.style.userSelect = 'none';
 		this.#ctx = this.canvas.getContext('2d');
-		this.#ctx.lineWidth = 0;
+		if (this.#ctx) this.#ctx.lineWidth = 0;
 
 		this.#bindCanvasEvents();
 		this.#bindMonomeEvents();
@@ -100,7 +100,14 @@ export class CanvasGrid {
 		this.#resizeObserver.observe(this.canvas);
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {boolean | number} value
+	 */
 	#square(x, y, value) {
+		const ctx = this.#ctx;
+		if (!ctx) return;
 		if (x >= this.#gridWidth || y >= this.#gridHeight) return;
 
 		const level = valueToLevel(value);
@@ -109,41 +116,47 @@ export class CanvasGrid {
 		const minDim = Math.min(squareWidth, squareHeight);
 		const spacing = minDim / 8;
 		const radius = minDim / 8;
-		this.#ctx.lineWidth = minDim / 16;
+		ctx.lineWidth = minDim / 16;
 
 		const x1 = x * minDim + spacing;
 		const x2 = (x + 1) * minDim - spacing;
 		const y1 = y * minDim + spacing;
 		const y2 = (y + 1) * minDim - spacing;
 
-		this.#ctx.beginPath();
-		this.#ctx.moveTo(x1 + radius, y1);
-		this.#ctx.arcTo(x2, y1, x2, y2, radius);
-		this.#ctx.arcTo(x2, y2, x1, y2, radius);
-		this.#ctx.arcTo(x1, y2, x1, y1, radius);
-		this.#ctx.arcTo(x1, y1, x2, y1, radius);
-		this.#ctx.closePath();
+		ctx.beginPath();
+		ctx.moveTo(x1 + radius, y1);
+		ctx.arcTo(x2, y1, x2, y2, radius);
+		ctx.arcTo(x2, y2, x1, y2, radius);
+		ctx.arcTo(x1, y2, x1, y1, radius);
+		ctx.arcTo(x1, y1, x2, y1, radius);
+		ctx.closePath();
 
 		this.#cache.set(`${x}_${y}`, level);
 		if (level === 0) {
-			this.#ctx.fillStyle = this.#inactiveColor;
-			this.#ctx.fill();
+			ctx.fillStyle = this.#inactiveColor;
+			ctx.fill();
 		} else if (level === 15) {
-			this.#ctx.fillStyle = this.#activeColor;
-			this.#ctx.fill();
+			ctx.fillStyle = this.#activeColor;
+			ctx.fill();
 		} else {
-			this.#ctx.fillStyle = this.#inactiveColor;
-			this.#ctx.fill();
-			this.#ctx.globalAlpha = level / 15;
-			this.#ctx.fillStyle = this.#activeColor;
-			this.#ctx.fill();
-			this.#ctx.globalAlpha = 1;
+			ctx.fillStyle = this.#inactiveColor;
+			ctx.fill();
+			ctx.globalAlpha = level / 15;
+			ctx.fillStyle = this.#activeColor;
+			ctx.fill();
+			ctx.globalAlpha = 1;
 		}
 
-		this.#ctx.strokeStyle = this.#borderColor;
-		this.#ctx.stroke();
+		ctx.strokeStyle = this.#borderColor;
+		ctx.stroke();
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[]} state
+	 * @param {boolean} [isLevel]
+	 */
 	#row(x, y, state, isLevel = false) {
 		const offsetX = Math.floor(x / 8) * 8;
 		for (let i = 0; i < 8; i++) {
@@ -151,6 +164,12 @@ export class CanvasGrid {
 		}
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[]} state
+	 * @param {boolean} [isLevel]
+	 */
 	#col(x, y, state, isLevel = false) {
 		const offsetY = Math.floor(y / 8) * 8;
 		for (let i = 0; i < 8; i++) {
@@ -158,18 +177,27 @@ export class CanvasGrid {
 		}
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number[] | number | boolean} state
+	 * @param {boolean} [isLevel]
+	 */
 	#map(x, y, state, isLevel = false) {
-		const isArray = Array.isArray(state);
 		const offsetX = Math.floor(x / 8) * 8;
 		const offsetY = Math.floor(y / 8) * 8;
 		for (let i = 0; i < 64; i++) {
 			const mx = (i % 8) + offsetX;
 			const my = Math.floor(i / 8) + offsetY;
-			const val = isArray ? state[i] : state;
+			const val = Array.isArray(state) ? state[i] : state;
 			this.#square(mx, my, isLevel ? val : Boolean(val));
 		}
 	}
 
+	/**
+	 * @param {number[] | number | boolean} value
+	 * @param {boolean} [isLevel]
+	 */
 	#all(value, isLevel = false) {
 		let heightOffset = 0;
 		while (heightOffset < this.#gridHeight) {
@@ -182,6 +210,10 @@ export class CanvasGrid {
 		}
 	}
 
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 */
 	#updateDimensions(x, y) {
 		const scale = window.devicePixelRatio;
 		const rect = this.canvas.getBoundingClientRect();
@@ -203,24 +235,34 @@ export class CanvasGrid {
 	}
 
 	#refreshGeometry() {
-		this.#rect = this.canvas.getBoundingClientRect();
+		const rect = this.canvas.getBoundingClientRect();
+		this.#rect = rect;
 		const scale = window.devicePixelRatio;
 		const sw = this.canvas.width / scale / this.#gridWidth;
 		const sh = this.canvas.height / scale / this.#gridHeight;
 		this.#squareSize = Math.min(sw, sh);
+		return rect;
 	}
 
+	/**
+	 * @param {number} cx
+	 * @param {number} cy
+	 */
 	#getSquareFromClient(cx, cy) {
-		if (!this.#rect) this.#refreshGeometry();
-		const x = Math.floor((cx - this.#rect.left) / this.#squareSize);
-		const y = Math.floor((cy - this.#rect.top) / this.#squareSize);
+		const rect = this.#rect ?? this.#refreshGeometry();
+		const x = Math.floor((cx - rect.left) / this.#squareSize);
+		const y = Math.floor((cy - rect.top) / this.#squareSize);
 		if (x < 0 || y < 0 || x >= this.#gridWidth || y >= this.#gridHeight) {
 			return null;
 		}
 		return { x, y };
 	}
 
+	/**
+	 * @param {{x: number, y: number}} pos
+	 */
 	#enterKey(pos) {
+		if (!this.#m) return;
 		const key = `${pos.x}_${pos.y}`;
 		const count = (this.#contactsPerKey.get(key) ?? 0) + 1;
 		this.#contactsPerKey.set(key, count);
@@ -228,7 +270,11 @@ export class CanvasGrid {
 		if (count === 1) this.#m.emit(GRID_KEY_DOWN, pos);
 	}
 
+	/**
+	 * @param {{x: number, y: number}} pos
+	 */
 	#leaveKey(pos) {
+		if (!this.#m) return;
 		const key = `${pos.x}_${pos.y}`;
 		const count = (this.#contactsPerKey.get(key) ?? 0) - 1;
 		// only emit key up when all contacts have left the pad (again modeling physical btns)
@@ -240,6 +286,11 @@ export class CanvasGrid {
 		}
 	}
 
+	/**
+	 * @param {string | number} id
+	 * @param {number} cx
+	 * @param {number} cy
+	 */
 	#startContact(id, cx, cy) {
 		if (this.#contacts.has(id)) this.#endContact(id);
 		const pos = this.#getSquareFromClient(cx, cy);
@@ -247,6 +298,11 @@ export class CanvasGrid {
 		if (pos) this.#enterKey(pos);
 	}
 
+	/**
+	 * @param {string | number} id
+	 * @param {number} cx
+	 * @param {number} cy
+	 */
 	#updateContact(id, cx, cy) {
 		if (!this.#contacts.has(id)) return;
 		const old = this.#contacts.get(id);
@@ -258,6 +314,9 @@ export class CanvasGrid {
 		this.#contacts.set(id, updated);
 	}
 
+	/**
+	 * @param {string | number} id
+	 */
 	#endContact(id) {
 		if (!this.#contacts.has(id)) return;
 		const old = this.#contacts.get(id);
@@ -268,11 +327,13 @@ export class CanvasGrid {
 	#bindCanvasEvents() {
 		const opts = { signal: this.#abort.signal, passive: true };
 
+		/** @param {MouseEvent} e */
 		const handleMouseDown = (e) => {
 			this.#refreshGeometry();
 			this.#startContact(MOUSE, e.clientX, e.clientY);
 		};
 
+		/** @param {MouseEvent} e */
 		const handleMouseMove = (e) => {
 			this.#updateContact(MOUSE, e.clientX, e.clientY);
 		};
@@ -290,6 +351,7 @@ export class CanvasGrid {
 			this.#contacts.set(MOUSE, null);
 		};
 
+		/** @param {TouchEvent} e */
 		const handleTouchStart = (e) => {
 			this.#refreshGeometry();
 			for (const t of e.changedTouches) {
@@ -297,12 +359,14 @@ export class CanvasGrid {
 			}
 		};
 
+		/** @param {TouchEvent} e */
 		const handleTouchMove = (e) => {
 			for (const t of e.changedTouches) {
 				this.#updateContact(t.identifier, t.clientX, t.clientY);
 			}
 		};
 
+		/** @param {TouchEvent} e */
 		const handleTouchEnd = (e) => {
 			for (const t of e.changedTouches) {
 				this.#endContact(t.identifier);
@@ -322,9 +386,11 @@ export class CanvasGrid {
 
 	#bindMonomeEvents() {
 		const m = this.#m;
+		if (!m) return;
 		const opts = { signal: this.#abort.signal };
 		/** @type {(name: string, fn: (e: CustomEvent) => void) => void} */
-		const listen = (name, fn) => m.addEventListener(name, fn, opts);
+		const listen = (name, fn) =>
+			m.addEventListener(name, /** @type {EventListener} */ (fn), opts);
 
 		listen(GRID_LED, ({ detail: { x, y, on } }) => {
 			this.#square(x, y, on);
@@ -385,7 +451,7 @@ export class CanvasGrid {
 
 	dispose() {
 		this.#abort.abort();
-		this.#resizeObserver.disconnect();
+		this.#resizeObserver?.disconnect();
 
 		if (this.canvas.parentNode) {
 			this.canvas.parentNode.removeChild(this.canvas);

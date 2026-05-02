@@ -5,6 +5,7 @@ import {
 	ERR_WRITE_MISSING_BYTES,
 	USB_XFER_STATUS_OK,
 	getEndpoint,
+	ERR_WRITE_NO_DEVICE,
 } from '../utils.js';
 import { ERROR } from '../events.js';
 
@@ -37,15 +38,19 @@ export class DeviceBase {
 	async listen() {
 		while (this.isConnected) {
 			try {
-				const result = await this.device.transferIn(this.endpointIn, 64);
+				const device = /** @type {USBDevice} */ (this.device);
+				const result = await device.transferIn(this.endpointIn, 64);
 				if (result.status === USB_XFER_STATUS_OK) {
-					if (result.data.byteLength > 0) this.processData(result.data);
+					if (result.data && result.data.byteLength > 0) {
+						this.processData(result.data);
+					}
 				} else {
 					log('transferIn status not ok: ' + result.status, 1);
 				}
 			} catch (e) {
 				if (!this.isConnected) return;
-				log('listen error: ' + e.message, 2);
+				const message = e instanceof Error ? e.message : String(e);
+				log('listen error: ' + message, 2);
 				this.m.emit(ERROR, { error: e });
 				return;
 			}
@@ -56,6 +61,7 @@ export class DeviceBase {
 	 * @param {number[]} data
 	 */
 	async write(data) {
+		if (!this.device) err(ERR_WRITE_NO_DEVICE);
 		const buffer = new Uint8Array(data);
 		const result = await this.device.transferOut(this.endpointOut, buffer);
 		if (result.status !== USB_XFER_STATUS_OK) err(ERR_WRITE);

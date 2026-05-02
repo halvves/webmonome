@@ -44,6 +44,7 @@ const PROTO_SERIES_AUX_PORT_DEACTIVATE = 0xd0;
 
 /* eslint-enable no-unused-vars */
 
+/** @type {Record<string, {x: number, y: number}>} */
 const SERIES_GRID_SIZES = {
 	64: { x: 8, y: 8 },
 	128: { x: 16, y: 8 },
@@ -64,7 +65,8 @@ export class GridSeries extends DeviceBase {
 		const m = this.m;
 		const opts = { signal: this.abort.signal };
 		/** @type {(name: string, fn: (e: CustomEvent) => void) => void} */
-		const listen = (name, fn) => m.addEventListener(name, fn, opts);
+		const listen = (name, fn) =>
+			m.addEventListener(name, /** @type {EventListener} */ (fn), opts);
 
 		listen(SEND_QUERY, () => {
 			log('query is not supported on series devices', 1);
@@ -75,7 +77,8 @@ export class GridSeries extends DeviceBase {
 		});
 
 		listen(SEND_GET_GRID_SIZE, () => {
-			const match = this.device.serialNumber.match(/^m(64|128|256)/);
+			const serial = this.device?.serialNumber;
+			const match = serial && serial.match(/^m(64|128|256)/);
 			if (!match) {
 				log('could not determine series grid size from serial number', 1);
 				return;
@@ -85,6 +88,11 @@ export class GridSeries extends DeviceBase {
 		});
 
 		// reusable led calls for sharing with normal and degradation paths
+		/**
+		 * @param {number} x
+		 * @param {number} y
+		 * @param {boolean | number} on
+		 */
 		const gridLed = (x, y, on) => {
 			this.write([
 				on ? PROTO_SERIES_LED_ON : PROTO_SERIES_LED_OFF,
@@ -92,22 +100,38 @@ export class GridSeries extends DeviceBase {
 			]);
 		};
 
+		/** @param {number} on */
 		const gridLedAll = (on) => {
 			this.write([PROTO_SERIES_CLEAR | (on & 0x01)]);
 		};
 
+		/**
+		 * @param {number} x
+		 * @param {number} y
+		 * @param {number[]} state
+		 */
 		const gridLedCol = (x, y, state) => {
 			const mode =
 				state.length === 8 ? PROTO_SERIES_LED_COL_8 : PROTO_SERIES_LED_COL_16;
 			this.write([mode | (x & 0x0f), packLineData(state)]);
 		};
 
+		/**
+		 * @param {number} x
+		 * @param {number} y
+		 * @param {number[]} state
+		 */
 		const gridLedRow = (x, y, state) => {
 			const mode =
 				state.length === 8 ? PROTO_SERIES_LED_ROW_8 : PROTO_SERIES_LED_ROW_16;
 			this.write([mode | (y & 0x0f), packLineData(state)]);
 		};
 
+		/**
+		 * @param {number} x
+		 * @param {number} y
+		 * @param {number[]} state
+		 */
 		const gridLedMap = (x, y, state) => {
 			const quadrant = Math.floor(x / 8) + Math.floor(y / 8) * 2;
 			const data = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -119,6 +143,7 @@ export class GridSeries extends DeviceBase {
 			this.write([PROTO_SERIES_LED_FRAME | (quadrant & 0x03), ...data]);
 		};
 
+		/** @param {number} intensity */
 		const gridLedIntensity = (intensity) => {
 			this.write([PROTO_SERIES_INTENSITY | (clamp(intensity, 0, 15) & 0x0f)]);
 		};
@@ -166,7 +191,7 @@ export class GridSeries extends DeviceBase {
 			gridLedCol(
 				x,
 				y,
-				state.map((l) => (l > 7 ? 1 : 0))
+				state.map((/** @type {number} */ l) => (l > 7 ? 1 : 0))
 			);
 		});
 
@@ -175,7 +200,7 @@ export class GridSeries extends DeviceBase {
 			gridLedRow(
 				x,
 				y,
-				state.map((l) => (l > 7 ? 1 : 0))
+				state.map((/** @type {number} */ l) => (l > 7 ? 1 : 0))
 			);
 		});
 
@@ -184,7 +209,7 @@ export class GridSeries extends DeviceBase {
 			gridLedMap(
 				x,
 				y,
-				state.map((l) => (l > 7 ? 1 : 0))
+				state.map((/** @type {number} */ l) => (l > 7 ? 1 : 0))
 			);
 		});
 	}

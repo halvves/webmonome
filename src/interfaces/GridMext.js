@@ -111,7 +111,8 @@ export class GridMext extends DeviceBase {
 		const m = this.m;
 		const opts = { signal: this.abort.signal };
 		/** @type {(name: string, fn: (e: CustomEvent) => void) => void} */
-		const listen = (name, fn) => m.addEventListener(name, fn, opts);
+		const listen = (name, fn) =>
+			m.addEventListener(name, /** @type {EventListener} */ (fn), opts);
 
 		listen(SEND_QUERY, () => {
 			this.writeBuffer(ADDR_SYSTEM, SYS_QUERY);
