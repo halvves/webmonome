@@ -3,7 +3,7 @@
 |   |   |
 |---|---|
 | npm | [0.0.1](https://www.npmjs.com/package/webmonome) |
-| size | [7kb minzipped](./scripts/sizecheck.js) |
+| size | [5.4kb minzipped](./scripts/sizecheck.js) |
 | dependencies | [zero](./package.json) |
 | license | [MIT](./LICENSE) |
 
@@ -16,7 +16,7 @@
 ### script include
 
 ```html
-<script src="https://unpkg.com/webmonome@alpha"></script>
+<script src="https://unpkg.com/webmonome"></script>
 ```
 ```js
 const monome = new Monome();
@@ -42,7 +42,7 @@ monome.on('gridKeyUp', keyup);
 
 ### import
 
-`npm install webmonome@alpha`
+`npm install webmonome`
 
 ```javascript
 import Monome from 'webmonome';
@@ -86,8 +86,6 @@ launchctl load /Library/LaunchAgents/org.monome.serialosc.plist
 
 ## api
 
-`webmonome` is currently very bare bones (as i'm still working out the kinks with WebUSB and the monome serial protocol), but there is enough there to perform most grid operations.
-
 ### connect
 
 - initialize WebUSB and connect to device:
@@ -96,9 +94,27 @@ launchctl load /Library/LaunchAgents/org.monome.serialosc.plist
   monome.connect()
   ```
 
+- close the active device connection (safe to call when not connected):
+
+  ```javascript
+  monome.disconnect()
+  ```
+
+- tear down the instance entirely (disconnects, removes listeners, disposes any canvases):
+
+  ```javascript
+  monome.dispose()
+  ```
+
+- read the most recently reported grid size (defaults to `{x: 16, y: 8}` until the device reports back):
+
+  ```javascript
+  monome.size // { x: number, y: number }
+  ```
+
 ### system
 
-system responses come in the form of events (see below), but this may be changed to include a callback or promise for ergonomics.
+system responses come in the form of events (see below).
 
 - request device information:
 
@@ -196,7 +212,7 @@ system responses come in the form of events (see below), but this may be changed
 - set level state for column of LEDs:
 
   ```javascript
-  monome.gridLedLevelCol(num: xOffset, num: yOffset, []num: state)
+  monome.gridLedLevelCol(xOffset, yOffset, state)
   ```
   - `xOffset`: integer
   - `yOffset`: integer (floored to multiples of 8 by the device firmware)
@@ -206,7 +222,7 @@ system responses come in the form of events (see below), but this may be changed
 - set level state for row of LEDs:
 
   ```javascript
-  monome.gridLedLevelRow(num: xOffset, num: yOffset, []num: state)
+  monome.gridLedLevelRow(xOffset, yOffset, state)
   ```
   - `xOffset`: integer (floored to multiples of 8 by the device firmware)
   - `yOffset`: integer
@@ -216,7 +232,7 @@ system responses come in the form of events (see below), but this may be changed
 - set level state for an 8x8 quad of LEDs:
 
   ```javascript
-  monome.gridLedLevelMap(num: xOffset, num: yOffset, []num: state)
+  monome.gridLedLevelMap(xOffset, yOffset, state)
   ```
   - `xOffset`: integer
   - `yOffset`: integer
@@ -249,16 +265,46 @@ system responses come in the form of events (see below), but this may be changed
   - `getGridSize` `{x: num, y: num}`
   - `gridKeyDown` `{x: num, y: num}`
   - `gridKeyUp` `{x: num, y: num}`
+  - `error` `{error: Error}`
 
+### canvas grid
 
-## next steps
+`webmonome` can spawn an HTMLCanvas based grid renderer that mirrors hardware state and emits the same `gridKeyDown` / `gridKeyUp` events, so apps can be developed and played without needing a physical device. when a physical device _IS_ connected, the canvas and the hardware stay in sync automatically.
 
-* remaining /sys/ commands
-  - grid offsets
-  - addr scan
-  - firmware version
-* arc ops
-* add any additional ops in the monome serial protocol (reaching something similar to libmonome)
+- create a canvas grid (all config is optional, the default values are what is shown in the example):
+
+  ```javascript
+  const grid = monome.createCanvasGrid({
+    width: 16,
+    height: 8,
+    activeColor: '#003dda',
+    inactiveColor: '#fff',
+    borderColor: '#000',
+  });
+  document.body.appendChild(grid.canvas);
+  ```
+
+  the canvas is a regular `HTMLCanvasElement` — size it with css. mouse and multi-touch input both produce `gridKeyDown` / `gridKeyUp` events on the parent `Monome` instance.
+
+- update colors at runtime:
+
+  ```javascript
+  grid.updateTheme({ activeColor, inactiveColor, borderColor });
+  ```
+
+- remove the canvas and stop listening:
+
+  ```javascript
+  grid.dispose();
+  ```
+
+## roadmap
+
+things on the list for future releases:
+
+* remaining `/sys/` commands (grid offsets, addr scan, firmware version)
+* arc support
+* parity with the rest of the monome serial protocol (reaching something similar to libmonome)
 
 ## see also
 * [monome protocol](https://monome.org/docs/serialosc/serial.txt)

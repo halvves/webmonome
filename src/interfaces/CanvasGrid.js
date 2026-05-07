@@ -325,7 +325,12 @@ export class CanvasGrid {
 	}
 
 	#bindCanvasEvents() {
-		const opts = { signal: this.#abort.signal, passive: true };
+		const signal = this.#abort.signal;
+
+		// touch listener not passive so we can avoid conflict
+		// with synthetic mouse events by calling preventDefault()
+		const touchOpts = { signal, passive: false };
+		const mouseOpts = { signal, passive: true };
 
 		/** @param {MouseEvent} e */
 		const handleMouseDown = (e) => {
@@ -353,6 +358,7 @@ export class CanvasGrid {
 
 		/** @param {TouchEvent} e */
 		const handleTouchStart = (e) => {
+			e.preventDefault();
 			this.#refreshGeometry();
 			for (const t of e.changedTouches) {
 				this.#startContact(t.identifier, t.clientX, t.clientY);
@@ -361,6 +367,7 @@ export class CanvasGrid {
 
 		/** @param {TouchEvent} e */
 		const handleTouchMove = (e) => {
+			e.preventDefault();
 			for (const t of e.changedTouches) {
 				this.#updateContact(t.identifier, t.clientX, t.clientY);
 			}
@@ -368,20 +375,21 @@ export class CanvasGrid {
 
 		/** @param {TouchEvent} e */
 		const handleTouchEnd = (e) => {
+			e.preventDefault();
 			for (const t of e.changedTouches) {
 				this.#endContact(t.identifier);
 			}
 		};
 
-		this.canvas.addEventListener('mousedown', handleMouseDown, opts);
-		this.canvas.addEventListener('mousemove', handleMouseMove, opts);
-		this.canvas.addEventListener('mouseleave', handleMouseLeave, opts);
-		window.addEventListener('mouseup', handleMouseUp, opts);
+		this.canvas.addEventListener('mousedown', handleMouseDown, mouseOpts);
+		this.canvas.addEventListener('mousemove', handleMouseMove, mouseOpts);
+		this.canvas.addEventListener('mouseleave', handleMouseLeave, mouseOpts);
+		window.addEventListener('mouseup', handleMouseUp, mouseOpts);
 
-		this.canvas.addEventListener('touchstart', handleTouchStart, opts);
-		this.canvas.addEventListener('touchmove', handleTouchMove, opts);
-		this.canvas.addEventListener('touchend', handleTouchEnd, opts);
-		this.canvas.addEventListener('touchcancel', handleTouchEnd, opts);
+		this.canvas.addEventListener('touchstart', handleTouchStart, touchOpts);
+		this.canvas.addEventListener('touchmove', handleTouchMove, touchOpts);
+		this.canvas.addEventListener('touchend', handleTouchEnd, touchOpts);
+		this.canvas.addEventListener('touchcancel', handleTouchEnd, touchOpts);
 	}
 
 	#bindMonomeEvents() {

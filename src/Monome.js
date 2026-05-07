@@ -52,6 +52,8 @@ class Monome extends EventTarget {
 	/** @type {Array<{name: string, fn: (detail: any) => void, wrapper: EventListener}>} */
 	#listeners = []; // used to track listeners for event sugar
 	#size = { x: 16, y: 8 };
+	/** @type {((e: USBConnectionEvent) => void) | null} */
+	#disconnectHandler = null;
 
 	/**
 	 * @returns {{x: number, y: number}}
@@ -162,11 +164,12 @@ class Monome extends EventTarget {
 				);
 			bridge.listen();
 
-			navigator.usb.addEventListener('disconnect', (e) => {
+			this.#disconnectHandler = (e) => {
 				if (e.device === device) {
 					this.disconnect();
 				}
-			});
+			};
+			navigator.usb.addEventListener('disconnect', this.#disconnectHandler);
 		} catch (e) {
 			if (device?.opened) {
 				await device.close();
@@ -179,6 +182,10 @@ class Monome extends EventTarget {
 	 * @returns {Promise<void>}
 	 */
 	async disconnect() {
+		if (this.#disconnectHandler) {
+			navigator.usb.removeEventListener('disconnect', this.#disconnectHandler);
+			this.#disconnectHandler = null;
+		}
 		if (this.#bridge) {
 			await this.#bridge.dispose();
 			this.#bridge = null;
@@ -199,6 +206,7 @@ class Monome extends EventTarget {
 	}
 
 	/**
+	 * @internal
 	 * @param {string} eventName
 	 * @param {any} [payload]
 	 * @returns {CustomEvent}
@@ -344,3 +352,8 @@ class Monome extends EventTarget {
 
 export { Monome };
 export default Monome;
+
+/**
+ * @typedef {import('./interfaces/CanvasGrid.js').CanvasGrid} CanvasGrid
+ * @typedef {import('./interfaces/CanvasGrid.js').CanvasGridConfig} CanvasGridConfig
+ */

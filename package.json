@@ -3,13 +3,25 @@
   "description": "communicate with devices beyond a translator",
   "license": "MIT",
   "author": "merl <merl@vvvvv.co>",
-  "version": "0.0.1-alpha.8",
+  "version": "0.0.1",
   "type": "module",
   "main": "dist/webmonome.cjs.js",
   "module": "dist/webmonome.esm.js",
   "browser": "dist/webmonome.umd.js",
   "unpkg": "dist/webmonome.umd.js",
   "types": "dist/webmonome.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/webmonome.d.ts",
+      "import": "./dist/webmonome.esm.js",
+      "require": "./dist/webmonome.cjs.js",
+      "default": "./dist/webmonome.esm.js"
+    },
+    "./min": {
+      "import": "./dist/webmonome.esm.min.js"
+    },
+    "./package.json": "./package.json"
+  },
   "homepage": "https://sr.ht/~merl/webmonome/",
   "repository": {
     "type": "git",
